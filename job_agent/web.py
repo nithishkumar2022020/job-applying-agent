@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from .app import connect_database, discover, load_json, now_iso, record_event
+from .app import connect_database, contains_term, discover, explicit_years_required, load_json, now_iso, record_event, salary_inr_annual
 
 
 WEB_ROOT = Path(__file__).resolve().parent.parent / "web"
@@ -20,12 +20,22 @@ ALLOWED_STATUSES = {"review", "approved", "rejected", "applied"}
 SCAN_LOCK = threading.Lock()
 
 
-def row_to_job(row: sqlite3.Row) -> dict[str, Any]:
+def row_to_job(row: sqlite3.Row, profile: dict[str, Any] | None = None) -> dict[str, Any]:
     job = dict(row)
     job["eligible"] = bool(job["eligible"])
     job["reasons"] = json.loads(job.pop("reasons_json"))
     job["warnings"] = json.loads(job.pop("warnings_json"))
     job["description"] = job["description"][:4000]
+    text = row["title"] + " " + row["description"]
+    job["evidence"] = {
+        "skills": [skill for skill in (profile or {}).get("candidate", {}).get("skill_keywords", []) if contains_term(text, skill)],
+        "years_required": explicit_years_required(text),
+        "salary_inr": salary_inr_annual(row["salary_text"] or text),
+        "track": "MNC fresher" if any("MNC fresher technical role" in reason for reason in job["reasons"]) else "Stack match" if any("Stack-matched" in reason for reason in job["reasons"]) else "GenAI" if any("GenAI role match" in reason for reason in job["reasons"]) else "Filtered",
+        "work_mode": job.get("work_mode") or "Office listed; arrangement unconfirmed",
+        "salary_status": "Published evidence" if salary_inr_annual(row["salary_text"] or text) else "Unknown; confirm ≥₹5 LPA",
+        "fit_level": "Stretch" if any("Stretch role:" in warning for warning in job["warnings"]) else "Needs experience confirmation" if explicit_years_required(text) is None else "Experience compatible",
+    }
     return job
 
 
@@ -171,10 +181,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         connection = self.connection()
         rows = connection.execute(
-            f"SELECT * FROM jobs {where} ORDER BY eligible DESC, score DESC, updated_at DESC LIMIT 500",
+            f"SELECT * FROM jobs {where} ORDER BY eligible DESC, score DESC, updated_at DESC",
             values,
         ).fetchall()
-        result = {"jobs": [row_to_job(row) for row in rows]}
+        profile = load_json(self.profile) if hasattr(self, "profile") else {}
+        result = {"jobs": [row_to_job(row, profile) for row in rows]}
         connection.close()
         return result
 
@@ -203,7 +214,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             item["latest_run"] = latest_runs.get(source["name"])
             result.append(item)
         connection.close()
-        return {"sources": result}
+        return {"sources": result, "leads": load_json(self.sources).get("leads", [])}
 
     def activity(self) -> dict[str, Any]:
         connection = self.connection()
@@ -224,6 +235,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def safe_profile(self) -> dict[str, Any]:
         profile = load_json(self.profile)
         search = profile["search"]
+        candidate = profile.get("candidate", {})
         return {
             "country": profile.get("candidate", {}).get("country", "India"),
             "preferred_regions": search.get("preferred_regions", []),
@@ -231,6 +243,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             "minimum_salary_inr": search.get("minimum_salary_inr"),
             "approval_required": search.get("approval_required", True),
             "allowed_work_modes": ["Hybrid", "Onsite"],
+            "candidate_summary": " · ".join(str(value) for value in [candidate.get("degree"), candidate.get("specialization"), candidate.get("graduation_year"), f"{candidate.get('full_time_months', 0)} months full-time", "Immediate joiner" if candidate.get("notice_period_days") == 0 else None] if value),
         }
 
     def start_scan(self) -> None:

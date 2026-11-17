@@ -1,15 +1,17 @@
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
-from job_agent.app import Job, clean_text, connect_database, contains_term, evaluate, salary_inr_annual, stable_key, store_job
+from job_agent.app import CareerDescriptionParser, Job, clean_text, connect_database, contains_term, evaluate, explicit_years_required, fetch_smartrecruiters, salary_inr_annual, stable_key, store_job
 from job_agent.web import DashboardHandler, build_snapshot_dashboard
 
 
 PROFILE = {
     "search": {
         "role_keywords": ["genai", "llm", "rag", "ai engineer"],
+        "stack_match_keywords": ["Python", "FastAPI", "Docker", "PyTorch"],
         "delivery_keywords": ["deployment", "production", "api"],
         "preferred_regions": ["Delhi", "Gurugram", "Noida"],
         "excluded_regions": ["Telangana", "Hyderabad", "Andhra Pradesh"],
@@ -21,7 +23,7 @@ PROFILE = {
         "maximum_explicit_years_required": 2,
         "preferred_company_types": ["mnc", "enterprise", "mid-size"],
         "mnc_fresher_keywords": ["fresher", "new grad", "graduate engineer", "entry level", "junior"],
-        "mnc_fresher_technical_keywords": ["software engineer", "data analyst", "cloud engineer"],
+        "mnc_fresher_technical_keywords": ["software engineer", "software developer", "data analyst", "cloud engineer", "backend"],
     }
 }
 
@@ -45,6 +47,26 @@ def job(**overrides):
 
 
 class ScoringTests(unittest.TestCase):
+    def test_startup_backend_stack_match_without_genai_title(self):
+        sample = job(title="Backend Developer", description="Build Python FastAPI services. 0-1 years.", company_type="mid-size")
+        decision = evaluate(sample, PROFILE)
+        self.assertTrue(decision.eligible)
+        self.assertIn("Stack-matched", decision.reasons[0])
+
+    def test_company_ai_blurb_does_not_qualify_talent_pool(self):
+        sample = job(title="Join our talent community", description="We build LLM and RAG platforms")
+        self.assertFalse(evaluate(sample, PROFILE).eligible)
+
+    def test_total_experience_is_not_hidden_by_specialty_experience(self):
+        self.assertEqual(explicit_years_required("5+ years in software; 2 years in LLMs"), 5)
+        self.assertEqual(explicit_years_required("Experience: 0–2 years"), 0)
+        self.assertEqual(explicit_years_required("Experience: 1 to 3 years"), 1)
+
+    def test_one_year_minimum_is_marked_stretch(self):
+        decision = evaluate(job(description="Build LLM APIs. 1–3 years required"), PROFILE)
+        self.assertTrue(decision.eligible)
+        self.assertTrue(any("Stretch role" in warning for warning in decision.warnings))
+
     def test_remote_india_roles_are_rejected(self):
         for location in ["Remote - India", "Bengaluru, India (Remote)", "India - WFH"]:
             with self.subTest(location=location):
@@ -122,6 +144,24 @@ class ScoringTests(unittest.TestCase):
 
 
 class StorageTests(unittest.TestCase):
+    def test_native_career_description_excludes_site_navigation(self):
+        parser = CareerDescriptionParser()
+        parser.feed('<nav>Other jobs</nav><span class="jobdescription"><p>Python <span>RAG</span></p><br>0–2 years</span><footer>Privacy</footer>')
+        text = " ".join(parser.parts)
+        self.assertIn("RAG", text)
+        self.assertNotIn("Privacy", text)
+
+    def test_smartrecruiters_uses_details_and_preserves_remote_flag(self):
+        responses = [
+            {"totalFound": 1, "content": [{"id": "123", "name": "Software Engineer", "location": {"country": "in"}}]},
+            {"name": "Software Engineer", "location": {"country": "in", "city": "Bengaluru", "remote": True}, "jobAd": {"sections": {"jobDescription": {"text": "Python Docker services"}, "qualifications": {"text": "B.Tech 5-10"}}}, "applyUrl": "https://example.com/job/123"},
+        ]
+        with patch("job_agent.app.fetch_json", side_effect=responses) as fetch:
+            sample = fetch_smartrecruiters({"name": "Company", "slug": "company"})[0]
+        self.assertEqual(fetch.call_count, 2)
+        self.assertEqual(sample.work_mode, "remote")
+        self.assertEqual(explicit_years_required(sample.description), 5)
+
     def test_duplicate_jobs_update_in_place(self):
         with tempfile.TemporaryDirectory() as directory:
             connection = connect_database(Path(directory) / "jobs.sqlite3")

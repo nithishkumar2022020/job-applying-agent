@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import html
 import json
@@ -14,6 +15,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from html.parser import HTMLParser
 from typing import Any, Iterable
 from urllib.parse import urlparse
 
@@ -65,8 +67,8 @@ def clean_text(value: Any) -> str:
         return ""
     if not isinstance(value, str):
         value = json.dumps(value, ensure_ascii=False)
-    value = re.sub(r"<[^>]+>", " ", value)
-    return re.sub(r"\s+", " ", html.unescape(value)).strip()
+    value = re.sub(r"<[^>]+>", " ", html.unescape(value))
+    return re.sub(r"\s+", " ", value).strip()
 
 
 def request_bytes(url: str) -> bytes:
@@ -97,8 +99,8 @@ def salary_inr_annual(text: str) -> int | None:
 
 
 def explicit_years_required(text: str) -> int | None:
-    matches = re.findall(r"(\d+)\s*(?:\+\s*|or more\s*)?(?:years?|yrs?)", text.lower())
-    return min((int(value) for value in matches), default=None)
+    matches = re.findall(r"(\d+)\s*(?:(?:-|–|—|to)\s*\d+\s*)?(?:\+\s*|or more\s*)?(?:years?|yrs?)", text.lower())
+    return max((int(value) for value in matches), default=None)
 
 
 def canonical_host(url: str) -> str:
@@ -273,7 +275,86 @@ def fetch_rss(source: dict[str, Any]) -> list[Job]:
     return jobs
 
 
+def fetch_smartrecruiters(source: dict[str, Any]) -> list[Job]:
+    slug = source["slug"]
+    listings = []
+    for page in range(int(source.get("max_pages", 10))):
+        data = fetch_json(f"https://api.smartrecruiters.com/v1/companies/{slug}/postings?country=in&limit=100&offset={page * 100}")
+        listings.extend(data.get("content", []))
+        if (page + 1) * 100 >= data.get("totalFound", 0):
+            break
+    targets = [
+        item for item in listings
+        if (item.get("location") or {}).get("country", "").lower() == "in"
+        and re.search(r"engineer|developer|analyst|trainee|graduate|scientist|python|devops|machine learning|artificial intelligence", item.get("name", ""), re.I)
+        and not re.search(r"\b(senior|sr|staff|principal|lead|manager|director|architect)\b", item.get("name", ""), re.I)
+    ]
+
+    def detail_job(item: dict[str, Any]) -> Job:
+        detail = fetch_json(f"https://api.smartrecruiters.com/v1/companies/{slug}/postings/{item['id']}")
+        location = detail.get("location") or {}
+        sections = (detail.get("jobAd") or {}).get("sections") or {}
+        description = " ".join(clean_text(sections.get(key, {}).get("text")) for key in ("jobDescription", "qualifications", "additionalInformation"))
+        level = clean_text((detail.get("experienceLevel") or {}).get("label"))
+        bare_years = re.search(r"\b(\d{1,2}\s*(?:(?:-|–|to)\s*\d{1,2})?\+?)\s*$", description)
+        if bare_years:
+            description += " Required experience: " + bare_years.group(1) + " years."
+        return Job(
+            source=source["name"], source_kind="smartrecruiters", external_id=str(item["id"]),
+            title=clean_text(detail.get("name")), company=source.get("company", source["name"]),
+            location=clean_text(location.get("fullLocation")) or clean_text(location.get("city")) + ", India",
+            work_mode="hybrid" if location.get("hybrid") else "remote" if location.get("remote") else "",
+            description=description + " Experience level: " + level,
+            apply_url=detail.get("applyUrl") or detail.get("postingUrl") or "",
+            posted_at=detail.get("releasedDate"), company_type=source.get("company_type", "unknown"),
+            company_size=source.get("company_size", "unknown"),
+        )
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        return list(executor.map(detail_job, targets))
+
+
+class CareerDescriptionParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.depth = 0
+        self.parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        if self.depth or "jobdescription" in (attributes.get("class") or "").split():
+            if tag not in {"br", "hr", "img", "input", "meta", "link", "wbr"}:
+                self.depth += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if self.depth and tag not in {"br", "hr", "img", "input", "meta", "link", "wbr"}:
+            self.depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if self.depth:
+            self.parts.append(data)
+
+
+def fetch_career_pages(source: dict[str, Any]) -> list[Job]:
+    jobs = []
+    for lead in source.get("listings", []):
+        parser = CareerDescriptionParser()
+        parser.feed(request_bytes(lead["url"]).decode("utf-8"))
+        description = clean_text(" ".join(parser.parts))
+        if not description:
+            raise ValueError("Job description missing; listing may be closed or page structure changed")
+        jobs.append(Job(
+            source=source["name"], source_kind="career_pages", external_id=lead["url"],
+            title=lead["title"], company=source["company"], location=lead["location"],
+            description=description, apply_url=lead["url"], posted_at=lead.get("posted_at"),
+            company_type=source.get("company_type", "unknown"), company_size=source.get("company_size", "unknown"),
+        ))
+    return jobs
+
+
 CONNECTORS = {
+    "career_pages": fetch_career_pages,
+    "smartrecruiters": fetch_smartrecruiters,
     "greenhouse": fetch_greenhouse,
     "lever": fetch_lever,
     "ashby": fetch_ashby,
@@ -332,9 +413,18 @@ def evaluate(job: Job, profile: dict[str, Any]) -> Decision:
     ]
     company_type = job.company_type.lower()
     preferred_company = any(value in company_type for value in search["preferred_company_types"])
-    mnc_fresher_match = preferred_company and fresher_hits and technical_hits
-    if not role_hits and not mnc_fresher_match:
-        return Decision(False, 0, ["No GenAI match or relevant MNC fresher-role evidence"], warnings)
+    title_technical = any(contains_term(title_lower, keyword) for keyword in search.get("mnc_fresher_technical_keywords", []))
+    if not title_technical and not any(contains_term(title_lower, keyword) for keyword in search["role_keywords"]):
+        role_hits = []
+    junior_title = bool(re.search(r"\b(trainee|graduate|fresher|junior|entry[- ]level|associate|sde[- ]?1|engineer[- ]?i)\b", title_lower))
+    years = explicit_years_required(combined)
+    mnc_company = company_type in {"mnc", "enterprise"}
+    explicit_fresher = [hit for hit in fresher_hits if hit != "associate"]
+    mnc_fresher_match = mnc_company and title_technical and (junior_title or bool(explicit_fresher) or years is not None and years <= 1)
+    stack_hits = [keyword for keyword in search.get("stack_match_keywords", []) if contains_term(combined, keyword)]
+    stack_match = title_technical and len(stack_hits) >= 2
+    if not role_hits and not mnc_fresher_match and not stack_match:
+        return Decision(False, 0, ["No GenAI, MNC fresher, or two-skill technical stack match"], warnings)
 
     if re.search(r"\b(senior|sr|staff|principal|lead|manager|director|head|architect)\b", title_lower):
         return Decision(False, 0, ["Title is explicitly senior for the current experience level"], warnings)
@@ -358,8 +448,10 @@ def evaluate(job: Job, profile: dict[str, Any]) -> Decision:
     score = 40
     if role_hits:
         reasons.append("GenAI role match: " + ", ".join(role_hits[:4]))
-    else:
+    elif mnc_fresher_match:
         reasons.append("MNC fresher technical role: " + ", ".join((fresher_hits + technical_hits)[:5]))
+    else:
+        reasons.append("Stack-matched technical role: " + ", ".join(stack_hits[:5]))
 
     delivery_hits = [keyword for keyword in search["delivery_keywords"] if contains_term(combined, keyword)]
     if delivery_hits:
@@ -391,6 +483,9 @@ def evaluate(job: Job, profile: dict[str, Any]) -> Decision:
     else:
         score += 8
         reasons.append(f"Experience requirement is within configured maximum: {years} years")
+    full_time_years = candidate.get("full_time_months", 6) / 12
+    if years is not None and years > full_time_years:
+        warnings.append(f"Stretch role: asks for {years} years versus {full_time_years:g} years full-time; internships are separate")
 
     if salary is None:
         score += 4

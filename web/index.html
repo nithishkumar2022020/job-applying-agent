@@ -17,6 +17,7 @@
         <button class="nav-item active" data-section="overview"><span>01</span>Overview</button>
         <button class="nav-item" data-section="jobs"><span>02</span>Job pipeline</button>
         <button class="nav-item" data-section="sources"><span>03</span>Sources</button>
+        <button class="nav-item" data-section="leads"><span>↗</span>Fresher pathways</button>
         <button class="nav-item" data-section="activity"><span>04</span>Activity</button>
         <button class="nav-item" data-section="profile"><span>05</span>Search profile</button>
       </nav>
@@ -44,7 +45,7 @@
           <div>
             <p class="eyebrow light">AGENT STATUS</p>
             <h2>India opportunities.<br>Hybrid or onsite.</h2>
-            <p>Direct employer boards are scanned for Indian office locations. Remote roles are excluded. North India is preferred; Telangana and Andhra Pradesh are excluded.</p>
+            <p>Two routes: MNC graduate and junior technical roles, plus GenAI, Python and backend stack matches at established startups. India offices only; North India preferred.</p>
           </div>
           <div class="orbit" aria-hidden="true"><span></span><span></span><span></span><b>LIVE</b></div>
         </div>
@@ -71,6 +72,7 @@
             <button data-view="applied">Applied</button>
             <button data-view="filtered">Filtered out</button>
           </div>
+          <label class="search"><span>Track</span><select id="track-filter"><option value="all">All tracks</option><option>MNC fresher</option><option>Stack match</option><option>GenAI</option></select></label>
           <label class="search"><span>Search</span><input id="job-search" placeholder="Title, company, skill or location"></label>
         </div>
         <div class="jobs-layout">
@@ -87,6 +89,11 @@
           <p>Direct company careers and ATS boards are highest priority. Popular portals remain candidate-controlled launch points unless they provide an approved public interface.</p>
         </div>
         <div class="source-groups" id="source-groups"></div>
+      </section>
+
+      <section id="leads" class="page">
+        <div class="section-intro"><div><p class="eyebrow">MNC GRADUATE ROUTES</p><h2>Fresher pathways and next steps</h2></div><p>Research leads with dated official evidence. Programs are separate from open vacancies; check degree, graduation batch, pay and office placement.</p></div>
+        <div id="lead-cards" class="source-grid"></div>
       </section>
 
       <section id="activity" class="page">

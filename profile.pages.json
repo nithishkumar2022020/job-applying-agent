@@ -28,7 +28,11 @@
       "LLM evaluation",
       "ASR",
       "speaker diarization"
-    ]
+    ],
+    "degree": "B.Tech",
+    "specialization": "Electronics and Communication Engineering",
+    "graduation_year": 2025,
+    "notice_period_days": 0
   },
   "search": {
     "role_keywords": [
@@ -67,7 +71,15 @@
       "python",
       "devops",
       "quality engineer",
-      "qa engineer"
+      "qa engineer",
+      "engineer trainee",
+      "graduate trainee",
+      "programmer analyst",
+      "systems engineer",
+      "system engineer",
+      "test engineer",
+      "application developer",
+      "sde"
     ],
     "delivery_keywords": [
       "ideation",
@@ -163,7 +175,10 @@
       "Raipur"
     ],
     "allow_remote_india": false,
-    "allowed_work_modes": ["hybrid", "onsite"],
+    "allowed_work_modes": [
+      "hybrid",
+      "onsite"
+    ],
     "minimum_salary_inr": 500000,
     "small_startup_minimum_salary_inr": 700000,
     "maximum_explicit_years_required": 2,
@@ -174,6 +189,21 @@
       "mid sized"
     ],
     "approval_required": true,
-    "daily_application_cap": null
+    "daily_application_cap": null,
+    "stack_match_keywords": [
+      "Python",
+      "FastAPI",
+      "PyTorch",
+      "LangChain",
+      "LangGraph",
+      "RAG",
+      "LLM",
+      "vLLM",
+      "Ollama",
+      "Milvus",
+      "ASR",
+      "Docker",
+      "MCP"
+    ]
   }
 }

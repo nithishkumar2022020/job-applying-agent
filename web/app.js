@@ -41,7 +41,7 @@ function toast(message) {
 function showSection(id) {
   $$(".page").forEach(page => page.classList.toggle("active", page.id === id));
   $$(".nav-item").forEach(item => item.classList.toggle("active", item.dataset.section === id));
-  $("#page-title").textContent = {overview:"Overview",jobs:"Job pipeline",sources:"Sources",activity:"Activity",profile:"Search profile"}[id];
+  $("#page-title").textContent = {overview:"Overview",jobs:"Job pipeline",sources:"Sources",leads:"Fresher pathways",activity:"Activity",profile:"Search profile"}[id];
   if (id === "jobs") loadJobs();
 }
 
@@ -60,14 +60,16 @@ function jobRow(job) {
   return `<button class="job-card ${state.selected?.id === job.id ? "active" : ""}" data-id="${job.id}">
     <div><h3>${escapeHtml(job.title)}</h3><p>${escapeHtml(job.company)} · ${escapeHtml(job.location)}</p></div>
     <span class="job-score">${job.score}</span>
-    <div class="tags"><span class="tag ${job.eligible ? "good" : "bad"}">${job.eligible ? "Shortlisted" : "Filtered"}</span><span class="tag">${escapeHtml(job.source)}</span><span class="tag">${escapeHtml(job.status)}</span></div>
+    <div class="tags"><span class="tag ${job.eligible ? "good" : "bad"}">${job.eligible ? "Shortlisted" : "Filtered"}</span><span class="tag">${escapeHtml(job.evidence?.track || "")}</span><span class="tag">${escapeHtml(job.source)}</span><span class="tag">${escapeHtml(job.status)}</span></div>
   </button>`;
 }
 
 async function loadJobs() {
   const query = new URLSearchParams({ view: state.view, q: $("#job-search")?.value || "" });
   const data = await api(`/api/jobs?${query}`); state.jobs = data.jobs;
-  $("#jobs-list").innerHTML = state.jobs.length ? state.jobs.map(jobRow).join("") : `<div class="panel empty">No jobs in this view.</div>`;
+  const track = $("#track-filter").value;
+  if (track !== "all") state.jobs = state.jobs.filter(job => job.evidence?.track === track);
+  $("#jobs-list").innerHTML = state.jobs.length ? state.jobs.map(jobRow).join("") : `<div class="panel empty">No jobs in this view. Check Fresher pathways for graduate programs and their next steps.</div>`;
   $$(".job-card").forEach(card => card.addEventListener("click", () => selectJob(Number(card.dataset.id))));
   if (state.selected) { state.selected = state.jobs.find(job => job.id === state.selected.id) || null; renderDetail(); }
 }
@@ -80,6 +82,7 @@ function renderDetail() {
   const warnings = job.warnings.map(warning => `<li>${escapeHtml(warning)}</li>`).join("");
   target.innerHTML = `<p class="eyebrow">JOB ${job.id} · SCORE ${job.score}</p><h2>${escapeHtml(job.title)}</h2>
     <p class="detail-meta"><strong>${escapeHtml(job.company)}</strong><br>${escapeHtml(job.location)}<br>${escapeHtml(job.source)}</p>
+    <div class="detail-section"><h4>Lead evidence</h4><p class="detail-meta">Track: ${escapeHtml(job.evidence?.track || "Unclassified")}<br>Fit: ${escapeHtml(job.evidence?.fit_level || "Needs review")}<br>Resume skills: ${escapeHtml(job.evidence?.skills.join(" · ") || "No exact skill evidence")}<br>Experience: ${job.evidence?.years_required == null ? "Not specified" : `${job.evidence.years_required} years minimum detected`}<br>Pay: ${escapeHtml(job.evidence?.salary_status || "Unverified")}<br>Work mode: ${escapeHtml(job.evidence?.work_mode || "Unverified")}<br>Listing date: ${escapeHtml(job.posted_at || "Not supplied")}<br>Last checked: ${formatDate(job.updated_at)}</p></div>
     <div class="detail-section"><h4>${job.eligible ? "Why it was shortlisted" : "Why it was filtered"}</h4><ul>${reasons || "<li>No evidence recorded.</li>"}</ul></div>
     ${warnings ? `<div class="detail-section"><h4>Review warnings</h4><ul>${warnings}</ul></div>` : ""}
     <div class="detail-section"><h4>Description preview</h4><p class="detail-meta">${escapeHtml(job.description).slice(0, 1200)}</p></div>
@@ -98,6 +101,7 @@ async function updateStatus(id, status) {
 
 async function loadSources() {
   const data = await api("/api/sources"); state.sources = data.sources;
+  $("#lead-cards").innerHTML = (data.leads || []).map(lead => `<article class="source-card"><p class="eyebrow">${escapeHtml(lead.company)} · RESEARCHED ${escapeHtml(lead.reviewed_at)}</p><h3>${escapeHtml(lead.title)}</h3><span class="tag">${escapeHtml(lead.status)}</span><p>${escapeHtml(lead.fit)}</p><p><strong>Pay evidence:</strong> ${escapeHtml(lead.pay)}</p><p><strong>Evidence:</strong> ${escapeHtml(lead.evidence)}</p><p><strong>Your fit:</strong> ${escapeHtml(lead.candidate_fit || "Eligibility unverified")}</p><p><strong>Next step:</strong> ${escapeHtml(lead.next)}</p><p>${escapeHtml(lead.work_mode)}</p><a href="${escapeHtml(lead.url)}" target="_blank" rel="noreferrer">Official source ↗</a></article>`).join("");
   const groups = { company_careers: "Direct company careers", company_ats: "Direct employer ATS", india_portal: "India job portals", public_api: "Approved public APIs", public_feed: "Approved public feeds" };
   $("#source-groups").innerHTML = Object.entries(groups).map(([key, label]) => {
     const sources = state.sources.filter(source => source.source_type === key); if (!sources.length) return "";
@@ -110,6 +114,7 @@ function sourceCard(source) {
   const live = source.enabled && source.access_mode === "automated_discovery";
   return `<article class="source-card"><div class="source-top"><div><p class="eyebrow">PRIORITY ${source.priority || 0}</p><h3>${escapeHtml(source.name)}</h3></div><span class="mode ${live ? "live" : ""}">${live ? "LIVE SCAN" : source.access_mode.replaceAll("_", " ").toUpperCase()}</span></div>
     <p>${escapeHtml(source.note || (live ? "Automatically checked through its public feed or API." : "Candidate-controlled source launch."))}</p>
+    ${source.latest_run ? `<p>Last scan: ${escapeHtml(source.latest_run.status)} · ${formatDate(source.latest_run.created_at)}${source.latest_run.error ? `<br>${escapeHtml(source.latest_run.error)}` : ""}</p>` : ""}
     ${source.homepage ? `<a href="${escapeHtml(source.homepage)}" target="_blank" rel="noreferrer">Open source ↗</a>` : ""}
     <div class="source-stats"><div><strong>${source.metrics.found || 0}</strong><small>Found</small></div><div><strong>${source.metrics.shortlisted || 0}</strong><small>Shortlisted</small></div></div></article>`;
 }
@@ -125,6 +130,8 @@ async function loadProfile() {
   $("#profile-content").innerHTML = `<article class="profile-card"><p class="eyebrow">MINIMUM PAY</p><strong>${formatMoney(profile.minimum_salary_inr)}</strong><p>Annual compensation floor.</p></article>
     <article class="profile-card"><p class="eyebrow">WORK AUTHORIZATION</p><strong>India</strong><p>Indian office locations only.</p></article>
     <article class="profile-card"><p class="eyebrow">WORK ARRANGEMENT</p><strong>Hybrid or onsite</strong><p>Remote roles excluded. Office arrangements need confirmation before approval.</p></article>
+    <article class="profile-card wide"><p class="eyebrow">CANDIDATE</p><h3>${escapeHtml(profile.candidate_summary || "Early-career applicant")}</h3></article>
+    <article class="profile-card wide"><p class="eyebrow">SEARCH ROUTES</p><h3>MNC graduate / junior technology · Python / backend / AI stack</h3><p>1–2 year minimums are marked as stretch roles. Internships are counted separately.</p></article>
     <article class="profile-card wide"><p class="eyebrow">PREFERRED NORTH INDIA</p><h3>${profile.preferred_regions.map(escapeHtml).join(" · ")}</h3></article>
     <article class="profile-card wide"><p class="eyebrow">EXCLUDED LOCATIONS</p><h3>${profile.excluded_regions.map(escapeHtml).join(" · ")}</h3></article>
     <article class="profile-card wide"><p class="eyebrow">APPLICATION POLICY</p><h3>${profile.approval_required ? "Your approval is required for every application" : "Automatic submission enabled"}</h3></article>`;
@@ -150,6 +157,7 @@ $$('[data-jump]').forEach(item => item.addEventListener("click", () => showSecti
 $$('#job-tabs button').forEach(button => button.addEventListener("click", () => { state.view = button.dataset.view; $$('#job-tabs button').forEach(item => item.classList.toggle("active", item === button)); loadJobs(); }));
 let searchTimer; $("#job-search").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(loadJobs, 250); });
 $("#scan-button").addEventListener("click", runScan);
+$("#track-filter").addEventListener("change", loadJobs);
 if (snapshot) {
   $("#scan-button").textContent = location.protocol === "file:" ? "Offline snapshot" : "Auto-updated snapshot";
   $("#last-scan").title = "Use the private local control center for live actions";

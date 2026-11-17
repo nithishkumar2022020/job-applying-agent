@@ -4,9 +4,12 @@ A privacy-first Python CLI that discovers jobs, applies deterministic eligibilit
 
 ## Features
 
-- Direct employer discovery from Rubrik, Databricks, Netskope, Okta, and Meesho
+- Direct employer discovery from Rubrik, Databricks, Netskope, Okta, Meesho, Sarvam, Sigmoid, CRED, Zeta, Freshworks and Bosch
+- Native company-page discovery for a verified AMETEK early-career AI vacancy
+- WITCH/graduate pathway research covering TCS, Wipro, Infosys, Cognizant, HCLTech and Tech Mahindra, with dated evidence, salary constraints and next steps
 - Direct Greenhouse, Lever, and Ashby employer-board connectors
-- GenAI and relevant MNC fresher-role matching
+- GenAI, MNC fresher technical, and two-skill Python/backend/AI stack matching
+- Resume skill evidence, detected experience, salary uncertainty, work arrangements and explicit stretch-role warnings
 - Indian office location validation, hybrid/onsite matching, and configurable exclusions
 - Remote/global feeds disabled; remote roles rejected, including structured ATS work arrangements
 - Salary, experience, seniority, startup-size, and URL safeguards
@@ -55,6 +58,10 @@ Approvals, status updates, and application actions remain available only in the 
 Customize `profile.json` before discovery. The file is ignored by Git because it may contain personal preferences and a local resume path.
 
 Employer boards may return worldwide listings; eligibility requires an Indian location and rejects remote roles. A named Indian city without a published work arrangement is a provisional office match with a confirmation warning. Country-only listings require an explicit hybrid or onsite arrangement. Existing saved jobs are re-evaluated on every scan. Portal links remain manual searches and are not counted as automated coverage.
+
+The Fresher pathways section contains researched program leads, not confirmed open jobs. Evidence dates are shown separately from automated job scan times. TCS's reviewed NQT drive is closed. Degree/batch eligibility and office allocation require checking for each drive; no program is automatically approved. MNC fresher matching requires technical-role and early-career evidence. Established startup matching can also qualify through at least two configured stack skills. One- and two-year minimums are marked as stretch roles against six months of full-time experience; internships are separate.
+
+SmartRecruiters sources paginate up to 1,000 India listings per employer and fetch complete descriptions for technical titles without explicit seniority. Counts represent these imported target roles, not every vacancy at the employer. Career-page sources check only explicitly configured vacancy URLs; missing descriptions fail the source rather than generating a job. An Indian office location without a published arrangement still requires manual hybrid/onsite confirmation. Unpublished pay is never represented as meeting the salary floor.
 
 ## Approval Workflow
 
