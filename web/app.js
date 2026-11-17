@@ -123,7 +123,8 @@ async function loadActivity() {
 async function loadProfile() {
   const profile = await api("/api/profile");
   $("#profile-content").innerHTML = `<article class="profile-card"><p class="eyebrow">MINIMUM PAY</p><strong>${formatMoney(profile.minimum_salary_inr)}</strong><p>Annual compensation floor.</p></article>
-    <article class="profile-card"><p class="eyebrow">WORK AUTHORIZATION</p><strong>India</strong><p>India-compatible roles only.</p></article>
+    <article class="profile-card"><p class="eyebrow">WORK AUTHORIZATION</p><strong>India</strong><p>Indian office locations only.</p></article>
+    <article class="profile-card"><p class="eyebrow">WORK ARRANGEMENT</p><strong>Hybrid or onsite</strong><p>Remote roles excluded. Office arrangements need confirmation before approval.</p></article>
     <article class="profile-card wide"><p class="eyebrow">PREFERRED NORTH INDIA</p><h3>${profile.preferred_regions.map(escapeHtml).join(" · ")}</h3></article>
     <article class="profile-card wide"><p class="eyebrow">EXCLUDED LOCATIONS</p><h3>${profile.excluded_regions.map(escapeHtml).join(" · ")}</h3></article>
     <article class="profile-card wide"><p class="eyebrow">APPLICATION POLICY</p><h3>${profile.approval_required ? "Your approval is required for every application" : "Automatic submission enabled"}</h3></article>`;

@@ -45,6 +45,22 @@ def job(**overrides):
 
 
 class ScoringTests(unittest.TestCase):
+    def test_remote_india_roles_are_rejected(self):
+        for location in ["Remote - India", "Bengaluru, India (Remote)", "India - WFH"]:
+            with self.subTest(location=location):
+                self.assertFalse(evaluate(job(location=location), PROFILE).eligible)
+        self.assertFalse(evaluate(job(work_mode="remote"), PROFILE).eligible)
+        self.assertFalse(evaluate(job(description="Fully remote LLM role"), PROFILE).eligible)
+
+    def test_hybrid_and_onsite_india_roles_are_allowed(self):
+        for mode in ["hybrid", "onsite"]:
+            with self.subTest(mode=mode):
+                self.assertTrue(evaluate(job(location="India", work_mode=mode), PROFILE).eligible)
+
+    def test_country_without_office_or_mode_is_rejected(self):
+        self.assertFalse(evaluate(job(location="India"), PROFILE).eligible)
+        self.assertFalse(evaluate(job(location="Remote"), PROFILE).eligible)
+
     def test_good_genai_role_is_eligible(self):
         decision = evaluate(job(), PROFILE)
         self.assertTrue(decision.eligible)
@@ -97,6 +113,8 @@ class ScoringTests(unittest.TestCase):
     def test_senior_role_is_rejected(self):
         decision = evaluate(job(title="Senior GenAI Engineer"), PROFILE)
         self.assertFalse(decision.eligible)
+        self.assertFalse(evaluate(job(title="Sr AI Engineer, Agentic Systems"), PROFILE).eligible)
+        self.assertFalse(evaluate(job(description="LLM role requiring 7 or more years"), PROFILE).eligible)
 
     def test_salary_parser(self):
         self.assertEqual(salary_inr_annual("₹6.5 LPA"), 650000)
@@ -115,6 +133,11 @@ class StorageTests(unittest.TestCase):
             self.assertFalse(second_created)
             self.assertEqual(first_id, second_id)
             self.assertEqual(stable_key(sample), stable_key(sample))
+            remote_sample = job(work_mode="remote")
+            store_job(connection, remote_sample, evaluate(remote_sample, PROFILE))
+            saved = connection.execute("SELECT work_mode, eligible FROM jobs").fetchone()
+            self.assertEqual(saved["work_mode"], "remote")
+            self.assertFalse(saved["eligible"])
 
     def test_dashboard_summary_reports_pipeline_counts(self):
         with tempfile.TemporaryDirectory() as directory:

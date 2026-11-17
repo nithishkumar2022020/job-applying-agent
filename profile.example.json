@@ -94,7 +94,8 @@
       "Kolkata",
       "Ahmedabad"
     ],
-    "allow_remote_india": true,
+    "allow_remote_india": false,
+    "allowed_work_modes": ["hybrid", "onsite"],
     "minimum_salary_inr": 500000,
     "small_startup_minimum_salary_inr": 700000,
     "maximum_explicit_years_required": 2,

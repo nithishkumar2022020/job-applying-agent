@@ -40,6 +40,7 @@ class Job:
     salary_text: str | None = None
     company_type: str = "unknown"
     company_size: str = "unknown"
+    work_mode: str = ""
 
 
 @dataclass(slots=True)
@@ -96,7 +97,7 @@ def salary_inr_annual(text: str) -> int | None:
 
 
 def explicit_years_required(text: str) -> int | None:
-    matches = re.findall(r"(\d+)\s*(?:\+\s*)?(?:years?|yrs?)", text.lower())
+    matches = re.findall(r"(\d+)\s*(?:\+\s*|or more\s*)?(?:years?|yrs?)", text.lower())
     return min((int(value) for value in matches), default=None)
 
 
@@ -159,6 +160,7 @@ def fetch_lever(source: dict[str, Any]) -> list[Job]:
                 title=clean_text(item.get("text")),
                 company=clean_text(source.get("company", source["name"])),
                 location=clean_text(categories.get("location")),
+                work_mode=clean_text(item.get("workplaceType")),
                 description=description,
                 apply_url=item.get("applyUrl") or item.get("hostedUrl") or "",
                 posted_at=str(item.get("createdAt") or ""),
@@ -184,6 +186,7 @@ def fetch_ashby(source: dict[str, Any]) -> list[Job]:
                 title=clean_text(item.get("title")),
                 company=clean_text(source.get("company", source["name"])),
                 location=clean_text(item.get("location")),
+                work_mode=clean_text(item.get("workplaceType")) or ("remote" if item.get("isRemote") else ""),
                 description=clean_text(item.get("descriptionPlain") or item.get("descriptionHtml")),
                 apply_url=item.get("applyUrl") or item.get("jobUrl") or "",
                 posted_at=item.get("publishedAt"),
@@ -299,12 +302,28 @@ def evaluate(job: Job, profile: dict[str, Any]) -> Decision:
             return Decision(False, 0, [f"Location is outside India: {outside_india}"], warnings)
 
     india_location = any(
-        contains_term(location_lower, marker) for marker in search.get("india_location_markers", [])
+        re.search(rf"\b{re.escape(marker.lower())}\b", location_lower)
+        for marker in search.get("india_location_markers", [])
     )
-    unrestricted_remote = location_lower.strip(" .,-") in {"remote", "worldwide", "anywhere", "global"}
-    regional_remote = contains_term(location_lower, "asia") or contains_term(location_lower, "apac")
-    if not (india_location or unrestricted_remote or regional_remote):
-        return Decision(False, 0, ["Location is not confirmed as India-compatible"], warnings)
+    if not india_location:
+        return Decision(False, 0, ["Location is not confirmed as India"], warnings)
+
+    mode = job.work_mode.lower()
+    hybrid = bool(re.search(r"\bhybrid\b", mode + " " + location_lower))
+    onsite = bool(re.search(r"\b(on[- ]?site|in[- ]office)\b", mode + " " + location_lower))
+    remote = bool(re.search(r"\b(remote|work from home|wfh)\b", mode + " " + location_lower))
+    remote_only = bool(re.search(r"\b(fully remote|remote[- ]only|100% remote|fully work from home)\b", combined))
+    remote_feed = job.source_kind in {"remotive", "jobicy"} or job.source == "Himalayas Remote Jobs"
+    if remote_feed or remote_only or (remote and not (hybrid or onsite)):
+        return Decision(False, 0, ["Remote role excluded: hybrid or onsite in India required"], warnings)
+    physical_location = any(
+        marker.lower() != "india" and contains_term(location_lower, marker)
+        for marker in search.get("india_location_markers", [])
+    )
+    if not (hybrid or onsite or physical_location):
+        return Decision(False, 0, ["Hybrid or onsite office location is not confirmed"], warnings)
+    if not (hybrid or onsite):
+        warnings.append("Indian office location listed; confirm onsite/hybrid arrangement before approval")
 
     role_hits = [keyword for keyword in search["role_keywords"] if contains_term(combined, keyword)]
     fresher_hits = [keyword for keyword in search.get("mnc_fresher_keywords", []) if contains_term(combined, keyword)]
@@ -317,7 +336,7 @@ def evaluate(job: Job, profile: dict[str, Any]) -> Decision:
     if not role_hits and not mnc_fresher_match:
         return Decision(False, 0, ["No GenAI match or relevant MNC fresher-role evidence"], warnings)
 
-    if re.search(r"\b(senior|staff|principal|lead|manager|director|head|architect)\b", title_lower):
+    if re.search(r"\b(senior|sr|staff|principal|lead|manager|director|head|architect)\b", title_lower):
         return Decision(False, 0, ["Title is explicitly senior for the current experience level"], warnings)
 
     years = explicit_years_required(combined)
@@ -356,15 +375,9 @@ def evaluate(job: Job, profile: dict[str, Any]) -> Decision:
         (region for region in search["preferred_regions"] if contains_term(location_lower, region)),
         None,
     )
-    remote_india = search.get("allow_remote_india") and "remote" in location_lower and (
-        "india" in location_lower or location_lower.strip() == "remote"
-    )
     if preferred_location:
         score += 15
         reasons.append(f"Preferred North India location: {preferred_location}")
-    elif remote_india:
-        score += 12
-        reasons.append("Remote role available from India")
     else:
         score += 5
         warnings.append("Location is allowed but not a North India preference match")
@@ -455,6 +468,9 @@ def connect_database(path: Path) -> sqlite3.Connection:
         );
         """
     )
+    columns = {row[1] for row in connection.execute("PRAGMA table_info(jobs)")}
+    if "work_mode" not in columns:
+        connection.execute("ALTER TABLE jobs ADD COLUMN work_mode TEXT NOT NULL DEFAULT ''")
     return connection
 
 
@@ -506,6 +522,7 @@ def store_job(connection: sqlite3.Connection, job: Job, decision: Decision) -> t
         )
         job_id = int(cursor.lastrowid)
         created = True
+    connection.execute("UPDATE jobs SET work_mode=? WHERE id=?", (job.work_mode, job_id))
     return job_id, created
 
 
@@ -520,6 +537,13 @@ def discover(args: argparse.Namespace) -> int:
     profile = load_json(Path(args.profile))
     sources = load_json(Path(args.sources))["sources"]
     connection = connect_database(Path(args.database))
+    for row in connection.execute("SELECT * FROM jobs").fetchall():
+        existing = Job(**{field: row[field] for field in Job.__dataclass_fields__ if field in row.keys()})
+        decision = evaluate(existing, profile)
+        connection.execute(
+            "UPDATE jobs SET eligible=?, score=?, reasons_json=?, warnings_json=? WHERE id=?",
+            (decision.eligible, decision.score, json.dumps(decision.reasons), json.dumps(decision.warnings), row["id"]),
+        )
     run_cursor = connection.execute(
         "INSERT INTO scan_runs (started_at, status) VALUES (?, 'running')",
         (now_iso(),),
@@ -542,6 +566,11 @@ def discover(args: argparse.Namespace) -> int:
             continue
         try:
             jobs = connector(source)
+            india_markers = profile["search"].get("india_location_markers", []) + profile["search"]["excluded_regions"]
+            jobs = [
+                job for job in jobs
+                if any(re.search(rf"\b{re.escape(marker.lower())}\b", job.location.lower()) for marker in india_markers)
+            ]
             fetched += len(jobs)
             for job in jobs:
                 decision = evaluate(job, profile)

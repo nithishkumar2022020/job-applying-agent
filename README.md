@@ -4,10 +4,11 @@ A privacy-first Python CLI that discovers jobs, applies deterministic eligibilit
 
 ## Features
 
-- Himalayas RSS, Remotive, Arbeitnow, and Jobicy connectors
+- Direct employer discovery from Rubrik, Databricks, Netskope, Okta, and Meesho
 - Direct Greenhouse, Lever, and Ashby employer-board connectors
 - GenAI and relevant MNC fresher-role matching
-- India-compatible location validation and configurable exclusions
+- Indian office location validation, hybrid/onsite matching, and configurable exclusions
+- Remote/global feeds disabled; remote roles rejected, including structured ATS work arrangements
 - Salary, experience, seniority, startup-size, and URL safeguards
 - SQLite history, deduplication, approval states, and HTML dashboard
 - Local control center showing all discoveries, filtered jobs, shortlists, approvals, scans, and source health
@@ -52,6 +53,8 @@ GitHub Pages publishes a privacy-safe read-only dashboard from `develop`. A sche
 Approvals, status updates, and application actions remain available only in the private local control center.
 
 Customize `profile.json` before discovery. The file is ignored by Git because it may contain personal preferences and a local resume path.
+
+Employer boards may return worldwide listings; eligibility requires an Indian location and rejects remote roles. A named Indian city without a published work arrangement is a provisional office match with a confirmation warning. Country-only listings require an explicit hybrid or onsite arrangement. Existing saved jobs are re-evaluated on every scan. Portal links remain manual searches and are not counted as automated coverage.
 
 ## Approval Workflow
 

@@ -230,6 +230,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             "excluded_regions": search.get("excluded_regions", []),
             "minimum_salary_inr": search.get("minimum_salary_inr"),
             "approval_required": search.get("approval_required", True),
+            "allowed_work_modes": ["Hybrid", "Onsite"],
         }
 
     def start_scan(self) -> None:
