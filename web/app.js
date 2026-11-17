@@ -8,24 +8,46 @@ function safeUrl(value) { try { const url = new URL(value); return ["https:", "h
 function readFilters() {
   return {
     companyType: $("#filter-company").value, workModes: $$('[name="work-mode"]:checked').map(input => input.value),
-    region: $("#filter-region").value, excludeStates: $("#filter-excluded").checked, maxYears: $("#filter-years").value,
+    states: $$('[name="location-state"]:checked').map(input => input.value), maxYears: $("#filter-years").value,
     minSalary: Math.max(0, Number($("#filter-salary").value) || 0), includeUnknownExperience: $("#filter-unknown-years").checked,
     includeUnknownSalary: $("#filter-unknown-pay").checked, includeSenior: $("#filter-senior").checked,
     source: $("#filter-source").value, skill: $("#filter-skill").value, track: $("#track-filter").value
   };
 }
-function setFilters(value) {
-  const filters = { ...JobFilters.defaults, ...value };
-  const fields = { "filter-company": "companyType", "filter-region": "region", "filter-years": "maxYears", "filter-salary": "minSalary", "filter-skill": "skill", "track-filter": "track" };
+function setFilters(value, apply = true) {
+  const filters = JobFilters.normalize(value);
+  const fields = { "filter-company": "companyType", "filter-years": "maxYears", "filter-salary": "minSalary", "filter-skill": "skill", "track-filter": "track", "filter-source": "source" };
   Object.entries(fields).forEach(([id, key]) => { $("#" + id).value = filters[key]; });
-  const checks = { "filter-excluded": "excludeStates", "filter-unknown-years": "includeUnknownExperience", "filter-unknown-pay": "includeUnknownSalary", "filter-senior": "includeSenior" };
+  const checks = { "filter-unknown-years": "includeUnknownExperience", "filter-unknown-pay": "includeUnknownSalary", "filter-senior": "includeSenior" };
   Object.entries(checks).forEach(([id, key]) => { $("#" + id).checked = filters[key]; });
   $$('[name="work-mode"]').forEach(input => { input.checked = filters.workModes.includes(input.value); });
-  state.filters = filters;
+  $$('[name="location-state"]').forEach(input => { input.checked = filters.states.includes(input.value); });
+  updateStateSelection();
+  if (apply) state.filters = filters;
 }
-function saveFilters() {
+function updateStateSelection() {
+  const options = $$('[name="location-state"]');
+  const count = options.filter(input => input.checked).length;
+  $("#states-all").checked = count === options.length;
+  $("#states-all").indeterminate = count > 0 && count < options.length;
+  $("#states-count").textContent = `${count} of ${options.length} selected`;
+}
+function markFiltersPending() {
+  updateStateSelection();
+  $("#filter-status").textContent = "Unapplied changes — click Apply filters";
+  $("#filter-status").classList.add("pending");
+}
+async function saveFilters() {
+  const button = $("#apply-filters");
+  if (!$("#filter-salary").checkValidity()) { $("#filter-salary").reportValidity(); return; }
+  button.disabled = true;
   state.filters = readFilters(); persist("job-agent-filters-v1", state.filters);
-  loadJobs(); loadSummary();
+  try {
+    await loadJobs(); await Promise.all([loadSummary(), loadLatest(), loadProfile()]);
+    $("#filter-status").textContent = `Filters applied · ${state.jobs.length} jobs shown`;
+    $("#filter-status").classList.remove("pending");
+  } catch (error) { toast(error.message); }
+  finally { button.disabled = false; }
 }
 function matchesPreferences(job) { return JobFilters.matches(job, state.filters || JobFilters.defaults); }
 const snapshot = window.__JOB_AGENT_SNAPSHOT__ || null;
@@ -100,9 +122,10 @@ function jobRow(job) {
 async function loadJobs() {
   const data = await api("/api/jobs?view=all"); state.allJobs = data.jobs;
   const sourceSelect = $("#filter-source");
+  const draftSource = sourceSelect.value || state.filters.source;
   sourceSelect.innerHTML = '<option value="all">All sources</option>' + [...new Set(data.jobs.map(job => job.source))].sort().map(source => `<option value="${escapeHtml(source)}">${escapeHtml(source)}</option>`).join("");
-  sourceSelect.value = state.filters.source;
-  if (!sourceSelect.value) { sourceSelect.value = "all"; state.filters.source = "all"; }
+  sourceSelect.value = draftSource;
+  if (!sourceSelect.value) sourceSelect.value = "all";
   const query = ($("#job-search").value || "").toLowerCase();
   const views = {
     shortlisted: job => matchesPreferences(job),
@@ -208,7 +231,7 @@ async function loadProfile() {
     <article class="profile-card wide"><p class="eyebrow">CANDIDATE</p><h3>${escapeHtml(profile.candidate_summary || "Early-career applicant")}</h3></article>
     <article class="profile-card wide"><p class="eyebrow">SEARCH ROUTES</p><h3>MNC graduate / junior technology · Python / backend / AI stack</h3><p>1–2 year minimums are marked as stretch roles. Internships are counted separately.</p></article>
     <article class="profile-card wide"><p class="eyebrow">PREFERRED NORTH INDIA</p><h3>${profile.preferred_regions.map(escapeHtml).join(" · ")}</h3></article>
-    <article class="profile-card wide"><p class="eyebrow">EXCLUDED LOCATIONS</p><h3>${profile.excluded_regions.map(escapeHtml).join(" · ")}</h3></article>
+    <article class="profile-card wide"><p class="eyebrow">SELECTED STATES & UNION TERRITORIES</p><h3>${state.filters.states.map(escapeHtml).join(" · ") || "None selected"}</h3></article>
     <article class="profile-card wide"><p class="eyebrow">APPLICATION POLICY</p><h3>${profile.approval_required ? "Your approval is required for every application" : "Automatic submission enabled"}</h3></article>`;
 }
 
@@ -233,11 +256,20 @@ $$('[data-jump]').forEach(item => item.addEventListener("click", () => showSecti
 $$('#job-tabs button').forEach(button => button.addEventListener("click", () => { state.view = button.dataset.view; $$('#job-tabs button').forEach(item => item.classList.toggle("active", item === button)); loadJobs(); }));
 let searchTimer; $("#job-search").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(loadJobs, 250); });
 $("#scan-button").addEventListener("click", runScan);
-$("#track-filter").addEventListener("change", saveFilters);
-$$(".filter-panel input, .filter-panel select").forEach(input => input.addEventListener("change", saveFilters));
-$("#reset-filters").addEventListener("click", () => { setFilters(JobFilters.defaults); $("#filter-source").value = "all"; saveFilters(); });
+$("#state-options").innerHTML = JobFilters.states.map(name => `<label><input type="checkbox" name="location-state" value="${escapeHtml(name)}">${escapeHtml(name)}</label>`).join("");
+$$(".filter-panel input:not(#states-all), .filter-panel select").forEach(input => input.addEventListener("input", markFiltersPending));
+$("#apply-filters").addEventListener("click", saveFilters);
+$("#states-all").addEventListener("change", event => {
+  $$('[name="location-state"]').forEach(input => { input.checked = event.target.checked; });
+  markFiltersPending();
+});
+$("#states-clear").addEventListener("click", () => {
+  $$('[name="location-state"]').forEach(input => { input.checked = false; });
+  markFiltersPending();
+});
+$("#reset-filters").addEventListener("click", () => { setFilters(JobFilters.defaults, false); markFiltersPending(); });
 $("#clear-filters").addEventListener("click", () => {
-  setFilters({ companyType:"all",workModes:["hybrid","onsite","unknown","remote"],region:"all",excludeStates:false,maxYears:"all",minSalary:0,includeUnknownExperience:true,includeUnknownSalary:true,includeSenior:true,source:"all",skill:"",track:"all" });
+  setFilters({ companyType:"all",workModes:["hybrid","onsite","unknown","remote"],states:[...JobFilters.states],maxYears:"all",minSalary:0,includeUnknownExperience:true,includeUnknownSalary:true,includeSenior:true,source:"all",skill:"",track:"all" }, false);
   $("#filter-source").value = "all"; $("#job-search").value = ""; state.view = "all";
   $$("#job-tabs button").forEach(button => button.classList.toggle("active", button.dataset.view === "all")); saveFilters();
 });

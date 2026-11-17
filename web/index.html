@@ -65,18 +65,19 @@
       <section id="jobs" class="page">
         <div class="panel application-panel"><div><h3>Applications</h3><p id="application-mode">Apply directly on the employer website. Approvals do not submit applications.</p></div><div class="detail-actions"><button class="button secondary" id="approve-visible">Approve visible jobs</button><button class="button primary" id="open-next">Open next approved application</button><button class="button" disabled title="No application runner is connected">Auto-apply: not connected</button></div><p id="queue-summary"></p></div>
         <details class="panel filter-panel" open><summary>Choose your filters <span id="filter-count"></span></summary>
-          <p>Saved in this browser. These controls search all available Indian listings; you can change every preference below.</p>
+          <p>Choose your preferences, then click Apply filters. Applied selections are saved in this browser.</p>
           <div class="filter-grid">
             <label>Company type<select id="filter-company"><option value="all">All employers</option><option value="mnc">MNC</option><option value="enterprise">Enterprise</option><option value="mid-size">Established / mid-size</option><option value="startup">Startup</option><option value="unknown">Unknown</option></select></label>
-            <label>Location preference<select id="filter-region"><option value="all">Anywhere in India</option><option value="north">North India only</option></select></label>
+            <label>Track<select id="track-filter"><option value="all">All tracks</option><option>MNC fresher</option><option>Stack match</option><option>GenAI</option></select></label>
             <label>Maximum required experience<select id="filter-years"><option value="all">Any experience</option><option value="0">Freshers / 0 years</option><option value="0.5">Up to 6 months</option><option value="1">Up to 1 year</option><option value="2">Up to 2 years</option><option value="3">Up to 3 years</option><option value="5">Up to 5 years</option></select></label>
             <label>Minimum annual pay (₹)<input id="filter-salary" type="number" min="0" step="50000"></label>
             <label>Source<select id="filter-source"><option value="all">All sources</option></select></label>
             <label>Required skills (comma separated)<input id="filter-skill" placeholder="Python, FastAPI"></label>
           </div>
           <fieldset class="filter-checks"><legend>Work arrangement</legend><label><input type="checkbox" name="work-mode" value="hybrid">Hybrid</label><label><input type="checkbox" name="work-mode" value="onsite">On-site confirmed</label><label><input type="checkbox" name="work-mode" value="unknown">Office listed / arrangement unknown</label><label><input type="checkbox" name="work-mode" value="remote">Remote</label></fieldset>
-          <div class="filter-checks"><label><input id="filter-excluded" type="checkbox">Exclude Telangana & Andhra Pradesh</label><label><input id="filter-unknown-years" type="checkbox">Include unknown experience</label><label><input id="filter-unknown-pay" type="checkbox">Include unknown pay</label><label><input id="filter-senior" type="checkbox">Include senior titles</label></div>
-          <div class="detail-actions"><button id="reset-filters" class="button secondary">Restore my defaults</button><button id="clear-filters" class="button link">Show all available jobs</button></div>
+          <fieldset class="state-filter"><legend>States & Union territories</legend><div class="state-controls"><label><input id="states-all" type="checkbox">Select all locations</label><button id="states-clear" type="button" class="text-button">Clear all</button><span id="states-count"></span></div><div id="state-options" class="state-options"></div><p>For listings with multiple locations, a match in any selected state is included. Unspecified locations have their own checkbox.</p></fieldset>
+          <div class="filter-checks"><label><input id="filter-unknown-years" type="checkbox">Include unknown experience</label><label><input id="filter-unknown-pay" type="checkbox">Include unknown pay</label><label><input id="filter-senior" type="checkbox">Include senior titles</label></div>
+          <div class="detail-actions filter-apply"><button id="apply-filters" type="button" class="button primary">Apply filters</button><button id="reset-filters" class="button secondary">Restore my defaults</button><button id="clear-filters" class="button link">Show all available jobs</button><span id="filter-status" role="status" aria-live="polite">Filters applied</span></div>
         </details>
         <div class="toolbar">
           <div class="tabs" id="job-tabs">
@@ -87,7 +88,6 @@
             <button data-view="applied">Applied</button>
             <button data-view="filtered">Filtered out</button>
           </div>
-          <label class="search"><span>Track</span><select id="track-filter"><option value="all">All tracks</option><option>MNC fresher</option><option>Stack match</option><option>GenAI</option></select></label>
           <label class="search"><span>Search</span><input id="job-search" placeholder="Title, company, skill or location"></label>
         </div>
         <div class="jobs-layout">
