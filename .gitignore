@@ -1,0 +1,13 @@
+profile.json
+candidate_evidence.json
+*.sqlite3
+review_queue.html
+logs/
+__pycache__/
+*.py[cod]
+.DS_Store
+.venv/
+dist/
+build/
+*.egg-info/
+

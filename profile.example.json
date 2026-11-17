@@ -1,0 +1,105 @@
+{
+  "candidate": {
+    "country": "India",
+    "work_authorization": ["India"],
+    "full_time_months": 0,
+    "internship_months_minimum": 0,
+    "resume_path": null,
+    "skill_keywords": [],
+    "blocked_resume_claim_patterns": [
+      "[add measured",
+      "confirm before submitting"
+    ]
+  },
+  "search": {
+    "role_keywords": [
+      "generative ai",
+      "genai",
+      "llm",
+      "large language model",
+      "rag",
+      "retrieval augmented generation",
+      "ai engineer",
+      "applied ai",
+      "machine learning engineer",
+      "agentic ai",
+      "prompt engineer"
+    ],
+    "mnc_fresher_keywords": [
+      "fresher",
+      "new grad",
+      "graduate engineer",
+      "entry level",
+      "junior",
+      "campus"
+    ],
+    "mnc_fresher_technical_keywords": [
+      "software engineer",
+      "machine learning",
+      "data analyst",
+      "data scientist",
+      "cloud engineer",
+      "devops",
+      "quality engineer"
+    ],
+    "delivery_keywords": [
+      "ideation",
+      "prototype",
+      "deployment",
+      "production",
+      "end-to-end",
+      "api",
+      "cloud"
+    ],
+    "preferred_regions": [
+      "Delhi",
+      "NCR",
+      "Gurugram",
+      "Noida",
+      "Chandigarh",
+      "Punjab",
+      "Haryana",
+      "Uttar Pradesh",
+      "Rajasthan",
+      "Uttarakhand",
+      "Himachal Pradesh",
+      "Jammu",
+      "Kashmir"
+    ],
+    "excluded_regions": [],
+    "outside_india_markers": [
+      "United States",
+      "USA",
+      "Canada",
+      "United Kingdom",
+      "Europe",
+      "Germany",
+      "France",
+      "Singapore",
+      "Australia"
+    ],
+    "india_location_markers": [
+      "India",
+      "Delhi",
+      "NCR",
+      "Gurugram",
+      "Noida",
+      "Chandigarh",
+      "Mumbai",
+      "Pune",
+      "Bengaluru",
+      "Bangalore",
+      "Chennai",
+      "Kochi",
+      "Kolkata",
+      "Ahmedabad"
+    ],
+    "allow_remote_india": true,
+    "minimum_salary_inr": 500000,
+    "small_startup_minimum_salary_inr": 700000,
+    "maximum_explicit_years_required": 2,
+    "preferred_company_types": ["mnc", "enterprise", "mid-size", "mid sized"],
+    "approval_required": true,
+    "daily_application_cap": null
+  }
+}
