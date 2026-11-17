@@ -24,6 +24,9 @@ A privacy-first Python CLI that discovers jobs, applies deterministic eligibilit
 ```bash
 git clone https://github.com/nithishkumar2022020/job-applying-agent.git
 cd job-applying-agent
+python3 -m venv .venv
+.venv/bin/python -m pip install '.[discovery]'
+source .venv/bin/activate
 cp profile.example.json profile.json
 python3 -m unittest discover -s tests -v
 python3 -m job_agent discover
@@ -47,7 +50,9 @@ python3 -m job_agent serve --host 127.0.0.1 --port 8765 --open
 
 The control center runs only on your computer. It shows every discovered job, filtering evidence, shortlisted roles, approval state, scan history, source health, and your active search rules. The **Run scan now** button performs discovery; it never submits an application.
 
-Popular portals that do not expose an approved public interface are included as manual launch links rather than scraped. Direct employer ATS connectors and company career sites remain the highest-priority source class.
+LinkedIn, Wellfound, Foundit and Cutshort remain manual launch links. Naukri and Indeed India also have bounded JobSpy discovery sources, listed separately from their general portal links. Direct employer ATS connectors and company career sites remain highest priority.
+
+Discovery also uses the pinned open-source [JobSpy](https://github.com/speedyapply/JobSpy) and [openroles](https://github.com/aranculleton/openroles) libraries. JobSpy runs bounded public Naukri/Indeed India searches; openroles adds employer ATS systems including Rippling and Workday. Only tested readable boards are enabled. Workday candidates currently blocked by HTTP 429 remain disabled. See [connector research and observed coverage](docs/discovery-research.md) for details. Library support is not the same as verified employer coverage.
 
 ## Hosted Dashboard
 

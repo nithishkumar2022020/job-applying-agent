@@ -352,7 +352,114 @@ def fetch_career_pages(source: dict[str, Any]) -> list[Job]:
     return jobs
 
 
+def fetch_openroles(source: dict[str, Any]) -> list[Job]:
+    try:
+        import openroles
+    except ImportError as error:
+        raise ValueError("Install discovery extras: pip install '.[discovery]'") from error
+    openroles.configure(user_agent=USER_AGENT)
+    detail_count = 0
+
+    def needs_details(item: Any) -> bool:
+        nonlocal detail_count
+        title = item.title.lower()
+        location = item.location.lower()
+        if detail_count >= int(source.get("detail_limit", 40)):
+            return False
+        if not any(term in location for term in ("india", "bengaluru", "bangalore", "delhi", "gurugram", "noida", "mumbai", "pune", "hyderabad", "chennai")):
+            return False
+        if not re.search(r"engineer|developer|scientist|analyst|trainee|graduate|python", title):
+            return False
+        if re.search(r"\b(senior|sr|staff|principal|manager|director|lead|architect)\b", title.replace("_", " ")):
+            return False
+        detail_count += 1
+        return True
+
+    report: dict[str, Any] = {}
+    try:
+        listings = openroles.fetch(source["target"], country="India", details=needs_details,
+                                   workday_queries=source.get("queries"), report=report)
+    except openroles.BoardError as error:
+        raise ValueError(str(error)) from error
+    errors = [str(value) for value in report.values() if value.get("error") or value.get("listing_errors") or value.get("detail_errors")]
+    if errors:
+        raise ValueError("Incomplete employer feed: " + "; ".join(errors)[:1000])
+    return [Job(
+        source=source["name"], source_kind="openroles", external_id=item.id, title=clean_text(item.title),
+        company=source["company"], location=clean_text(item.location), description=clean_text(item.description),
+        apply_url=item.url, work_mode=item.workplace or ("remote" if item.remote is True else ""),
+        posted_at=item.posted or None, salary_text=item.compensation or None,
+        company_type=source.get("company_type", "unknown"), company_size=source.get("company_size", "unknown"),
+    ) for item in listings if item.description][:int(source.get("max_jobs", 150))]
+
+
+def normalize_india_location(location: str) -> str:
+    if not contains_term(location, "india"):
+        return location
+    states = {"DL": "Delhi", "HR": "Haryana", "UP": "Uttar Pradesh", "KA": "Karnataka", "KL": "Kerala",
+              "MH": "Maharashtra", "MP": "Madhya Pradesh", "TN": "Tamil Nadu", "GJ": "Gujarat", "RJ": "Rajasthan",
+              "WB": "West Bengal", "PB": "Punjab", "CH": "Chandigarh", "UK": "Uttarakhand", "OD": "Odisha",
+              "BR": "Bihar", "JH": "Jharkhand", "AS": "Assam", "GA": "Goa", "CG": "Chhattisgarh",
+              "AP": "Andhra Pradesh", "TS": "Telangana", "TG": "Telangana"}
+    return re.sub(r"\b[A-Z]{2}\b", lambda match: states.get(match.group(), match.group()), location)
+
+
+def fetch_jobspy(source: dict[str, Any]) -> list[Job]:
+    try:
+        import pandas as pd
+        from jobspy import scrape_jobs
+    except ImportError as error:
+        raise ValueError("Install discovery extras: pip install '.[discovery]'") from error
+    site = source.get("site")
+    if site not in {"naukri", "indeed"}:
+        raise ValueError("This connector is configured for Naukri and Indeed India discovery only")
+    data = scrape_jobs(site_name=[site], search_term=source["query"], location=source.get("location", "India"),
+                       country_indeed="India", results_wanted=min(int(source.get("results_wanted", 30)), 100),
+                       hours_old=int(source.get("hours_old", 168)), fetch_description=True,
+                       is_remote=None, verbose=0)
+    if getattr(data, "empty", False):
+        raise ValueError("JobSpy returned no results: query may be empty or blocked; coverage is unconfirmed")
+    jobs = []
+    for row in data.to_dict(orient="records"):
+        def value(key: str) -> Any:
+            item = row.get(key)
+            if item is None or isinstance(item, (list, dict, tuple)):
+                return item
+            return None if pd.isna(item) else item
+
+        salary = None
+        amount = value("min_amount")
+        currency = clean_text(value("currency"))
+        interval = clean_text(value("interval")).lower()
+        if amount is not None and currency.upper() == "INR":
+            multiplier = {"yearly": 1, "annual": 1, "monthly": 12}.get(interval)
+            if multiplier:
+                salary = f"INR {int(float(amount) * multiplier)} per annum"
+        description = clean_text(value("description"))
+        experience = clean_text(value("experience_range"))
+        if experience:
+            description += " Required experience: " + experience + ("" if re.search(r"years?|yrs?", experience, re.I) else " years") + "."
+        skills = clean_text(value("skills"))
+        if skills:
+            description += " Reported skills: " + skills
+        mode_text = clean_text(value("work_from_home_type")).lower()
+        mode = "hybrid" if "hybrid" in mode_text else "remote" if value("is_remote") == True else "onsite" if "office" in mode_text else ""
+        company = clean_text(value("company"))
+        mncs = {"tcs", "tata consultancy services", "wipro", "infosys", "cognizant", "hcltech", "tech mahindra", "accenture", "ibm", "capgemini", "ltimindtree"}
+        jobs.append(Job(
+            source=source["name"], source_kind="jobspy", external_id=str(value("id") or value("job_url") or ""),
+            title=clean_text(value("title")), company=company,
+            location=normalize_india_location(clean_text(value("location"))), description=description,
+            apply_url=clean_text(value("job_url_direct") or value("job_url")), work_mode=mode,
+            posted_at=str(value("date_posted") or "") or None, salary_text=salary,
+            company_type="mnc" if company.lower() in mncs else "unknown", company_size="unknown",
+        ))
+    return jobs
+
+
 CONNECTORS = {
+    "openroles": fetch_openroles,
+    "jobspy": fetch_jobspy,
     "career_pages": fetch_career_pages,
     "smartrecruiters": fetch_smartrecruiters,
     "greenhouse": fetch_greenhouse,

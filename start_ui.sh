@@ -9,4 +9,6 @@ if [[ ! -f profile.json ]]; then
   echo "Created profile.json from the example. Customize it before relying on matches."
 fi
 
-exec python3 -m job_agent serve --host 127.0.0.1 --port "${PORT:-8765}" --open
+PYTHON=python3
+if [[ -x "$ROOT/.venv/bin/python" ]]; then PYTHON="$ROOT/.venv/bin/python"; fi
+exec "$PYTHON" -m job_agent serve --host 127.0.0.1 --port "${PORT:-8765}" --open

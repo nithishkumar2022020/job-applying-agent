@@ -190,6 +190,7 @@ function sourceCard(source) {
     <p>${escapeHtml(source.note || (live ? "Automatically checked through its public feed or API." : "Candidate-controlled source launch."))}</p>
     ${source.latest_run ? `<p>Last scan: ${escapeHtml(source.latest_run.status)} · ${formatDate(source.latest_run.created_at)}${source.latest_run.error ? `<br>${escapeHtml(source.latest_run.error)}` : ""}</p>` : ""}
     ${source.homepage ? `<a href="${escapeHtml(source.homepage)}" target="_blank" rel="noreferrer">Open source ↗</a>` : ""}
+    ${source.connector_project ? `<p><a href="${escapeHtml(source.connector_project)}" target="_blank" rel="noreferrer">Open-source connector ↗</a></p>` : ""}
     <div class="source-stats"><div><strong>${source.metrics.found || 0}</strong><small>Found</small></div><div><strong>${source.metrics.shortlisted || 0}</strong><small>Shortlisted</small></div></div></article>`;
 }
 
