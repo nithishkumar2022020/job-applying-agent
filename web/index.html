@@ -63,10 +63,25 @@
       </section>
 
       <section id="jobs" class="page">
+        <div class="panel application-panel"><div><h3>Applications</h3><p id="application-mode">Apply directly on the employer website. Approvals do not submit applications.</p></div><div class="detail-actions"><button class="button secondary" id="approve-visible">Approve visible jobs</button><button class="button primary" id="open-next">Open next approved application</button><button class="button" disabled title="No application runner is connected">Auto-apply: not connected</button></div><p id="queue-summary"></p></div>
+        <details class="panel filter-panel" open><summary>Choose your filters <span id="filter-count"></span></summary>
+          <p>Saved in this browser. These controls search all available Indian listings; you can change every preference below.</p>
+          <div class="filter-grid">
+            <label>Company type<select id="filter-company"><option value="all">All employers</option><option value="mnc">MNC</option><option value="enterprise">Enterprise</option><option value="mid-size">Established / mid-size</option><option value="startup">Startup</option><option value="unknown">Unknown</option></select></label>
+            <label>Location preference<select id="filter-region"><option value="all">Anywhere in India</option><option value="north">North India only</option></select></label>
+            <label>Maximum required experience<select id="filter-years"><option value="all">Any experience</option><option value="0">Freshers / 0 years</option><option value="0.5">Up to 6 months</option><option value="1">Up to 1 year</option><option value="2">Up to 2 years</option><option value="3">Up to 3 years</option><option value="5">Up to 5 years</option></select></label>
+            <label>Minimum annual pay (₹)<input id="filter-salary" type="number" min="0" step="50000"></label>
+            <label>Source<select id="filter-source"><option value="all">All sources</option></select></label>
+            <label>Required skills (comma separated)<input id="filter-skill" placeholder="Python, FastAPI"></label>
+          </div>
+          <fieldset class="filter-checks"><legend>Work arrangement</legend><label><input type="checkbox" name="work-mode" value="hybrid">Hybrid</label><label><input type="checkbox" name="work-mode" value="onsite">On-site confirmed</label><label><input type="checkbox" name="work-mode" value="unknown">Office listed / arrangement unknown</label><label><input type="checkbox" name="work-mode" value="remote">Remote</label></fieldset>
+          <div class="filter-checks"><label><input id="filter-excluded" type="checkbox">Exclude Telangana & Andhra Pradesh</label><label><input id="filter-unknown-years" type="checkbox">Include unknown experience</label><label><input id="filter-unknown-pay" type="checkbox">Include unknown pay</label><label><input id="filter-senior" type="checkbox">Include senior titles</label></div>
+          <div class="detail-actions"><button id="reset-filters" class="button secondary">Restore my defaults</button><button id="clear-filters" class="button link">Show all available jobs</button></div>
+        </details>
         <div class="toolbar">
           <div class="tabs" id="job-tabs">
-            <button class="active" data-view="all">All found</button>
-            <button data-view="shortlisted">Shortlisted</button>
+            <button class="active" data-view="all">Filtered results</button>
+            <button data-view="shortlisted">My shortlist</button>
             <button data-view="review">Needs approval</button>
             <button data-view="approved">Approved</button>
             <button data-view="applied">Applied</button>
@@ -102,12 +117,13 @@
       </section>
 
       <section id="profile" class="page">
-        <div class="section-intro"><div><p class="eyebrow">ACTIVE RULESET</p><h2>Your search profile</h2></div><p>These rules are applied before anything reaches the approval queue.</p></div>
+        <div class="section-intro"><div><p class="eyebrow">YOUR PREFERENCES</p><h2>Your search profile</h2></div><p>Choose and save your preferences using the selectable filters in Job pipeline.</p><button class="button primary" data-jump="jobs">Edit my filters</button></div>
         <div id="profile-content" class="profile-grid"></div>
       </section>
     </main>
   </div>
   <div class="toast" id="toast" role="status"></div>
+  <script src="filters.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

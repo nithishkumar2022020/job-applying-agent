@@ -53,7 +53,9 @@ Popular portals that do not expose an approved public interface are included as 
 
 GitHub Pages publishes a privacy-safe read-only dashboard from `develop`. A scheduled workflow refreshes public sources every four hours and redeploys the result. The hosted build uses `profile.pages.json`, which deliberately excludes resume paths, contact details, local databases, application history, and private candidate files.
 
-Approvals, status updates, and application actions remain available only in the private local control center.
+The hosted dashboard supports selectable filters, full listing descriptions, direct application links and a browser-local approval queue. Preferences and hosted decisions are stored only in your browser; they are not synchronized across devices or sent to GitHub. On the private local control center, decisions are saved in SQLite. Approve & open application and Open next approved application open employer forms. Only your explicit submission confirmation marks a job applied. No automatic form-submission runner is connected, and GitHub Pages cannot run one; its Auto-apply control displays that state.
+
+Choose company type, work arrangements (including unknown/remote), geography, exclusions, experience, salary, missing-data allowances, seniority, skills, track and source in Job pipeline. These selections filter all imported India listings independently of the original agent eligibility decision. Show all available jobs removes display filters; restore defaults reapplies the initial preferences. Filters change your view and shortlist in this browser, while automated discovery continues checking the configured employer sources. Unavailable jobs or unconnected sources cannot be added by a display filter.
 
 Customize `profile.json` before discovery. The file is ignored by Git because it may contain personal preferences and a local resume path.
 

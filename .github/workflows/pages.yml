@@ -31,6 +31,9 @@ jobs:
       - name: Run tests
         run: python -m unittest discover -s tests -v
 
+      - name: Test selectable filters
+        run: node --test tests/test_filters.cjs
+
       - name: Discover current jobs
         run: python -m job_agent --database "${RUNNER_TEMP}/jobs.sqlite3" discover --profile profile.pages.json --sources sources.json
 

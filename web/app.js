@@ -1,4 +1,33 @@
-const state = { view: "all", jobs: [], selected: null, sources: [] };
+const state = { view: "all", jobs: [], allJobs: [], selected: null, sources: [], filters: null };
+function readStored(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } }
+function persist(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { toast("Browser storage unavailable; changes last for this session only."); } }
+const decisions = readStored("job-agent-decisions-v1", {});
+const applicationKey = job => job.stable_key || job.apply_url;
+const statusOf = job => snapshot ? (decisions[applicationKey(job)]?.status || job.status) : job.status;
+function safeUrl(value) { try { const url = new URL(value); return ["https:", "http:"].includes(url.protocol) ? url.href : ""; } catch { return ""; } }
+function readFilters() {
+  return {
+    companyType: $("#filter-company").value, workModes: $$('[name="work-mode"]:checked').map(input => input.value),
+    region: $("#filter-region").value, excludeStates: $("#filter-excluded").checked, maxYears: $("#filter-years").value,
+    minSalary: Math.max(0, Number($("#filter-salary").value) || 0), includeUnknownExperience: $("#filter-unknown-years").checked,
+    includeUnknownSalary: $("#filter-unknown-pay").checked, includeSenior: $("#filter-senior").checked,
+    source: $("#filter-source").value, skill: $("#filter-skill").value, track: $("#track-filter").value
+  };
+}
+function setFilters(value) {
+  const filters = { ...JobFilters.defaults, ...value };
+  const fields = { "filter-company": "companyType", "filter-region": "region", "filter-years": "maxYears", "filter-salary": "minSalary", "filter-skill": "skill", "track-filter": "track" };
+  Object.entries(fields).forEach(([id, key]) => { $("#" + id).value = filters[key]; });
+  const checks = { "filter-excluded": "excludeStates", "filter-unknown-years": "includeUnknownExperience", "filter-unknown-pay": "includeUnknownSalary", "filter-senior": "includeSenior" };
+  Object.entries(checks).forEach(([id, key]) => { $("#" + id).checked = filters[key]; });
+  $$('[name="work-mode"]').forEach(input => { input.checked = filters.workModes.includes(input.value); });
+  state.filters = filters;
+}
+function saveFilters() {
+  state.filters = readFilters(); persist("job-agent-filters-v1", state.filters);
+  loadJobs(); loadSummary();
+}
+function matchesPreferences(job) { return JobFilters.matches(job, state.filters || JobFilters.defaults); }
 const snapshot = window.__JOB_AGENT_SNAPSHOT__ || null;
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -47,56 +76,101 @@ function showSection(id) {
 
 async function loadSummary() {
   const data = await api("/api/summary");
-  const count = data.counts;
-  const metrics = [
-    [count.total, "Jobs found"], [count.shortlisted, "Shortlisted"], [count.awaiting_review, "Awaiting approval"],
-    [count.approved, "Approved"], [count.applied, "Applied"]
-  ];
+  const count = state.allJobs.length ? {
+    total: state.allJobs.length,
+    shortlisted: state.allJobs.filter(matchesPreferences).length,
+    awaiting_review: state.allJobs.filter(job => matchesPreferences(job) && statusOf(job) === "review").length,
+    approved: state.allJobs.filter(job => statusOf(job) === "approved").length,
+    applied: state.allJobs.filter(job => statusOf(job) === "applied").length
+  } : data.counts;
+  const metrics = [[count.total, "Jobs available"], [count.shortlisted, "Match your filters"], [count.awaiting_review, "Awaiting review"], [count.approved, "Approved by you"], [count.applied, "Marked applied"]];
   $("#metrics").innerHTML = metrics.map((item, index) => `<div class="metric ${index === 1 ? "highlight" : ""}"><strong>${item[0] || 0}</strong><span>${item[1]}</span></div>`).join("");
   $("#last-scan").textContent = data.latest_scan ? `Last scan: ${formatDate(data.latest_scan.completed_at || data.latest_scan.started_at)}` : "No scan recorded";
+  $("#queue-summary").textContent = `${count.approved || 0} approved · ${count.applied || 0} manually marked applied. Opening a form does not submit it.`;
 }
-
 function jobRow(job) {
-  return `<button class="job-card ${state.selected?.id === job.id ? "active" : ""}" data-id="${job.id}">
-    <div><h3>${escapeHtml(job.title)}</h3><p>${escapeHtml(job.company)} · ${escapeHtml(job.location)}</p></div>
+  const url = safeUrl(job.apply_url);
+  return `<article class="job-card ${state.selected?.id === job.id ? "active" : ""}">
+    <button class="job-title" data-id="${job.id}"><h3>${escapeHtml(job.title)}</h3><p>${escapeHtml(job.company)} · ${escapeHtml(job.location)}</p></button>
     <span class="job-score">${job.score}</span>
-    <div class="tags"><span class="tag ${job.eligible ? "good" : "bad"}">${job.eligible ? "Shortlisted" : "Filtered"}</span><span class="tag">${escapeHtml(job.evidence?.track || "")}</span><span class="tag">${escapeHtml(job.source)}</span><span class="tag">${escapeHtml(job.status)}</span></div>
-  </button>`;
+    <div class="tags"><span class="tag ${matchesPreferences(job) ? "good" : "bad"}">${matchesPreferences(job) ? "Matches your filters" : "Outside your filters"}</span><span class="tag">${escapeHtml(job.evidence?.fit_level || "Needs review")}</span><span class="tag">${escapeHtml(statusOf(job))}</span></div>
+    <div class="card-actions"><button class="text-button" data-id="${job.id}">View full details</button>${url ? `<a class="button primary" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Apply on company site ↗</a>` : "<span>Application link unavailable</span>"}</div>
+  </article>`;
 }
-
 async function loadJobs() {
-  const query = new URLSearchParams({ view: state.view, q: $("#job-search")?.value || "" });
-  const data = await api(`/api/jobs?${query}`); state.jobs = data.jobs;
-  const track = $("#track-filter").value;
-  if (track !== "all") state.jobs = state.jobs.filter(job => job.evidence?.track === track);
-  $("#jobs-list").innerHTML = state.jobs.length ? state.jobs.map(jobRow).join("") : `<div class="panel empty">No jobs in this view. Check Fresher pathways for graduate programs and their next steps.</div>`;
-  $$(".job-card").forEach(card => card.addEventListener("click", () => selectJob(Number(card.dataset.id))));
-  if (state.selected) { state.selected = state.jobs.find(job => job.id === state.selected.id) || null; renderDetail(); }
+  const data = await api("/api/jobs?view=all"); state.allJobs = data.jobs;
+  const sourceSelect = $("#filter-source");
+  sourceSelect.innerHTML = '<option value="all">All sources</option>' + [...new Set(data.jobs.map(job => job.source))].sort().map(source => `<option value="${escapeHtml(source)}">${escapeHtml(source)}</option>`).join("");
+  sourceSelect.value = state.filters.source;
+  if (!sourceSelect.value) { sourceSelect.value = "all"; state.filters.source = "all"; }
+  const query = ($("#job-search").value || "").toLowerCase();
+  const views = {
+    shortlisted: job => matchesPreferences(job),
+    review: job => matchesPreferences(job) && statusOf(job) === "review",
+    approved: job => statusOf(job) === "approved", applied: job => statusOf(job) === "applied",
+    filtered: job => !matchesPreferences(job)
+  };
+  state.jobs = data.jobs.filter(job => (state.view === "filtered" || matchesPreferences(job)) && (!views[state.view] || views[state.view](job)) && (!query || `${job.title} ${job.company} ${job.location} ${job.description}`.toLowerCase().includes(query)));
+  $("#filter-count").textContent = `· ${state.jobs.length} shown / ${data.jobs.length} available`;
+  $("#jobs-list").innerHTML = state.jobs.length ? state.jobs.map(jobRow).join("") : '<div class="panel empty">No jobs match these selections. Change filters or choose Show all available jobs.</div>';
+  $$('[data-id]').forEach(button => button.addEventListener("click", () => selectJob(Number(button.dataset.id))));
+  state.selected = state.jobs.find(job => job.id === state.selected?.id) || state.jobs[0] || null;
+  renderDetail();
 }
-
-function selectJob(id) { state.selected = state.jobs.find(job => job.id === id); loadJobs(); renderDetail(); }
+function selectJob(id) {
+  state.selected = state.allJobs.find(job => job.id === id);
+  renderDetail();
+  $$(".job-card").forEach(card => card.classList.toggle("active", Number(card.querySelector("[data-id]").dataset.id) === id));
+  if (window.innerWidth < 1100) $("#job-detail").scrollIntoView({ behavior: "smooth", block: "start" });
+}
 function renderDetail() {
   const job = state.selected; const target = $("#job-detail");
-  if (!job) { target.innerHTML = `<div class="empty-detail"><span>↗</span><h3>Select a job</h3><p>See its score, filtering evidence, warnings and application link.</p></div>`; return; }
+  if (!job) { target.innerHTML = '<div class="empty-detail"><h3>No job selected</h3><p>Select a listing to see the full description and application controls.</p></div>'; return; }
+  const url = safeUrl(job.apply_url);
   const reasons = job.reasons.map(reason => `<li>${escapeHtml(reason)}</li>`).join("");
   const warnings = job.warnings.map(warning => `<li>${escapeHtml(warning)}</li>`).join("");
-  target.innerHTML = `<p class="eyebrow">JOB ${job.id} · SCORE ${job.score}</p><h2>${escapeHtml(job.title)}</h2>
+  target.innerHTML = `<p class="eyebrow">JOB ${job.id} · ORIGINAL FIT SCORE ${job.score}</p><h2>${escapeHtml(job.title)}</h2>
     <p class="detail-meta"><strong>${escapeHtml(job.company)}</strong><br>${escapeHtml(job.location)}<br>${escapeHtml(job.source)}</p>
-    <div class="detail-section"><h4>Lead evidence</h4><p class="detail-meta">Track: ${escapeHtml(job.evidence?.track || "Unclassified")}<br>Fit: ${escapeHtml(job.evidence?.fit_level || "Needs review")}<br>Resume skills: ${escapeHtml(job.evidence?.skills.join(" · ") || "No exact skill evidence")}<br>Experience: ${job.evidence?.years_required == null ? "Not specified" : `${job.evidence.years_required} years minimum detected`}<br>Pay: ${escapeHtml(job.evidence?.salary_status || "Unverified")}<br>Work mode: ${escapeHtml(job.evidence?.work_mode || "Unverified")}<br>Listing date: ${escapeHtml(job.posted_at || "Not supplied")}<br>Last checked: ${formatDate(job.updated_at)}</p></div>
-    <div class="detail-section"><h4>${job.eligible ? "Why it was shortlisted" : "Why it was filtered"}</h4><ul>${reasons || "<li>No evidence recorded.</li>"}</ul></div>
-    ${warnings ? `<div class="detail-section"><h4>Review warnings</h4><ul>${warnings}</ul></div>` : ""}
-    <div class="detail-section"><h4>Description preview</h4><p class="detail-meta">${escapeHtml(job.description).slice(0, 1200)}</p></div>
-    <div class="detail-actions">
-      <a class="button link" href="${escapeHtml(job.apply_url)}" target="_blank" rel="noreferrer">Open listing</a>
-      ${!snapshot && job.eligible && job.status === "review" ? `<button class="button secondary" data-status="approved">Approve</button><button class="button danger" data-status="rejected">Reject</button>` : ""}
-      ${!snapshot && job.status === "approved" ? `<button class="button secondary" data-status="applied">Mark applied</button>` : ""}
-    </div>`;
+    <div class="detail-actions sticky-actions">${url ? `<a class="button primary" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Apply on company site ↗</a><button class="button secondary" id="approve-open">Approve & open application</button>` : ""}
+    <button class="button secondary" data-status="approved">Approve for my queue</button><button class="button danger" data-status="rejected">Reject</button><button class="button link" data-status="applied">I submitted this application</button></div>
+    <p class="action-note">Application forms open on the employer website. You complete and submit the form there. Approval records your decision; it does not submit anything.</p>
+    <div class="detail-section"><h4>Listing details</h4><p class="detail-meta">Tracks: ${escapeHtml(job.evidence?.tracks?.join(" · ") || "Unclassified")}<br>Fit: ${escapeHtml(job.evidence?.fit_level || "Needs review")}<br>Resume skills: ${escapeHtml(job.evidence?.skills?.join(" · ") || "No exact skill evidence")}<br>Required experience: ${job.evidence?.years_required == null ? "Not specified" : `${job.evidence.years_required} years minimum detected`}<br>Pay: ${job.evidence?.salary_inr ? formatMoney(job.evidence.salary_inr) + " annually (detected)" : "Not published; confirm before applying"}<br>Work mode: ${escapeHtml(job.evidence?.work_mode || "Unverified")}<br>Source date: ${escapeHtml(job.posted_at || "Not supplied")}<br>Last checked: ${formatDate(job.updated_at)}<br>Application status: ${escapeHtml(statusOf(job))}</p></div>
+    <details class="detail-section" open><summary>Full job description</summary><div class="full-description">${escapeHtml(job.description || "Description not supplied by source. Open the original listing.")}</div></details>
+    <details class="detail-section"><summary>Original agent assessment</summary><ul>${reasons}</ul><p>Your current filter selections control the results above.</p></details>
+    ${warnings ? `<div class="detail-section"><h4>Items to verify</h4><ul>${warnings}</ul></div>` : ""}`;
   $$('[data-status]').forEach(button => button.addEventListener("click", () => updateStatus(job.id, button.dataset.status)));
+  $("#approve-open")?.addEventListener("click", () => {
+    const opened = window.open(url, "_blank", "noopener,noreferrer");
+    updateStatus(job.id, "approved", true);
+  });
 }
 
-async function updateStatus(id, status) {
-  await api(`/api/jobs/${id}/status`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({status}) });
-  toast(`Job marked ${status}`); await Promise.all([loadJobs(), loadSummary(), loadActivity()]);
+
+async function updateStatus(id, status, opened = false) {
+  const job = state.allJobs.find(item => item.id === id); if (!job) return;
+  if (!snapshot) await api(`/api/jobs/${id}/status`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({status}) });
+  decisions[applicationKey(job)] = { status, opened, updated_at: new Date().toISOString() };
+  persist("job-agent-decisions-v1", decisions);
+  job.status = status;
+  toast(status === "applied" ? "Recorded your confirmation of submission" : `Job marked ${status}`);
+  await loadJobs(); await loadSummary(); await loadActivity();
+}
+async function approveVisible() {
+  for (const job of state.jobs.filter(job => !["applied", "rejected"].includes(statusOf(job)))) {
+    if (!snapshot) await api(`/api/jobs/${job.id}/status`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({status: "approved"}) });
+    decisions[applicationKey(job)] = {status: "approved", opened: false, updated_at: new Date().toISOString()};
+    job.status = "approved";
+  }
+  persist("job-agent-decisions-v1", decisions);
+  await loadJobs(); await loadSummary(); toast("Visible jobs approved. No applications submitted.");
+}
+function openNext() {
+  const job = state.allJobs.find(item => statusOf(item) === "approved" && !decisions[applicationKey(item)]?.opened && safeUrl(item.apply_url));
+  if (!job) { toast("No unopened approved jobs. Approve a job first."); return; }
+  window.open(safeUrl(job.apply_url), "_blank", "noopener,noreferrer");
+  decisions[applicationKey(job)] = {status: "approved", opened: true, updated_at: new Date().toISOString()};
+  persist("job-agent-decisions-v1", decisions);
+  selectJob(job.id); toast("Employer form opened. Complete and submit it there.");
 }
 
 async function loadSources() {
@@ -127,9 +201,9 @@ async function loadActivity() {
 
 async function loadProfile() {
   const profile = await api("/api/profile");
-  $("#profile-content").innerHTML = `<article class="profile-card"><p class="eyebrow">MINIMUM PAY</p><strong>${formatMoney(profile.minimum_salary_inr)}</strong><p>Annual compensation floor.</p></article>
+  $("#profile-content").innerHTML = `<article class="profile-card"><p class="eyebrow">MINIMUM PAY</p><strong>${formatMoney(state.filters.minSalary)}</strong><p>Your selected annual compensation floor.</p></article>
     <article class="profile-card"><p class="eyebrow">WORK AUTHORIZATION</p><strong>India</strong><p>Indian office locations only.</p></article>
-    <article class="profile-card"><p class="eyebrow">WORK ARRANGEMENT</p><strong>Hybrid or onsite</strong><p>Remote roles excluded. Office arrangements need confirmation before approval.</p></article>
+    <article class="profile-card"><p class="eyebrow">WORK ARRANGEMENT</p><strong>${escapeHtml(state.filters.workModes.join(" · ") || "None selected")}</strong><p>Change these selections in Job pipeline. Unknown arrangements require confirmation.</p></article>
     <article class="profile-card wide"><p class="eyebrow">CANDIDATE</p><h3>${escapeHtml(profile.candidate_summary || "Early-career applicant")}</h3></article>
     <article class="profile-card wide"><p class="eyebrow">SEARCH ROUTES</p><h3>MNC graduate / junior technology · Python / backend / AI stack</h3><p>1–2 year minimums are marked as stretch roles. Internships are counted separately.</p></article>
     <article class="profile-card wide"><p class="eyebrow">PREFERRED NORTH INDIA</p><h3>${profile.preferred_regions.map(escapeHtml).join(" · ")}</h3></article>
@@ -139,7 +213,8 @@ async function loadProfile() {
 
 async function loadLatest() {
   const data = await api("/api/jobs?view=all");
-  $("#latest-jobs").innerHTML = data.jobs.slice(0, 5).map(job => `<div class="compact-row"><span class="compact-icon">${job.score}</span><div><strong>${escapeHtml(job.title)}</strong><small>${escapeHtml(job.company)} · ${escapeHtml(job.location)}</small></div><span class="tag ${job.eligible ? "good" : "bad"}">${job.eligible ? "Shortlist" : "Filtered"}</span></div>`).join("") || `<p class="empty">No jobs loaded.</p>`;
+  $("#latest-jobs").innerHTML = data.jobs.filter(matchesPreferences).slice(0, 5).map(job => `<div class="compact-row"><span class="compact-icon">${job.score}</span><div><button class="text-button" data-overview-job="${job.id}">${escapeHtml(job.title)}</button><small>${escapeHtml(job.company)} · ${escapeHtml(job.location)}</small></div><a href="${escapeHtml(safeUrl(job.apply_url))}" target="_blank" rel="noopener noreferrer">Apply ↗</a></div>`).join("") || '<p class="empty">No jobs match your filters. Open Job pipeline to adjust them.</p>';
+  $$("[data-overview-job]").forEach(button => button.addEventListener("click", async () => { showSection("jobs"); await loadJobs(); selectJob(Number(button.dataset.overviewJob)); }));
 }
 
 async function runScan() {
@@ -150,14 +225,25 @@ async function runScan() {
   finally { setTimeout(() => { button.disabled = false; button.textContent = "Run scan now"; }, 5000); }
 }
 
-async function refresh() { await Promise.all([loadSummary(), loadLatest(), loadSources(), loadActivity(), loadProfile()]); if ($("#jobs").classList.contains("active")) await loadJobs(); }
+async function refresh() { await loadJobs(); await Promise.all([loadSummary(), loadLatest(), loadSources(), loadActivity(), loadProfile()]); }
 
 $$('.nav-item').forEach(item => item.addEventListener("click", () => showSection(item.dataset.section)));
 $$('[data-jump]').forEach(item => item.addEventListener("click", () => showSection(item.dataset.jump)));
 $$('#job-tabs button').forEach(button => button.addEventListener("click", () => { state.view = button.dataset.view; $$('#job-tabs button').forEach(item => item.classList.toggle("active", item === button)); loadJobs(); }));
 let searchTimer; $("#job-search").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(loadJobs, 250); });
 $("#scan-button").addEventListener("click", runScan);
-$("#track-filter").addEventListener("change", loadJobs);
+$("#track-filter").addEventListener("change", saveFilters);
+$$(".filter-panel input, .filter-panel select").forEach(input => input.addEventListener("change", saveFilters));
+$("#reset-filters").addEventListener("click", () => { setFilters(JobFilters.defaults); $("#filter-source").value = "all"; saveFilters(); });
+$("#clear-filters").addEventListener("click", () => {
+  setFilters({ companyType:"all",workModes:["hybrid","onsite","unknown","remote"],region:"all",excludeStates:false,maxYears:"all",minSalary:0,includeUnknownExperience:true,includeUnknownSalary:true,includeSenior:true,source:"all",skill:"",track:"all" });
+  $("#filter-source").value = "all"; $("#job-search").value = ""; state.view = "all";
+  $$("#job-tabs button").forEach(button => button.classList.toggle("active", button.dataset.view === "all")); saveFilters();
+});
+$("#approve-visible").addEventListener("click", () => approveVisible().catch(error => toast(error.message)));
+$("#open-next").addEventListener("click", openNext);
+setFilters(readStored("job-agent-filters-v1", JobFilters.defaults));
+$("#application-mode").textContent = snapshot ? "Apply on the employer website. Approvals are saved only in this browser; they do not submit applications. Automatic submission needs a connected application runner." : "Approvals are saved to your private database. Open each approved employer form to complete the application. No submission runner is connected.";
 if (snapshot) {
   $("#scan-button").textContent = location.protocol === "file:" ? "Offline snapshot" : "Auto-updated snapshot";
   $("#last-scan").title = "Use the private local control center for live actions";

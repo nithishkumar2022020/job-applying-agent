@@ -1,6 +1,9 @@
 import json
 import tempfile
+import threading
 import unittest
+import urllib.request
+from http.server import ThreadingHTTPServer
 from unittest.mock import patch
 from pathlib import Path
 
@@ -144,6 +147,36 @@ class ScoringTests(unittest.TestCase):
 
 
 class StorageTests(unittest.TestCase):
+    def test_http_details_and_approval_work_with_real_request_handler(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = root / "jobs.sqlite3"
+            connection = connect_database(database)
+            sample = job(description="Build LLM services. " * 500)
+            job_id, _ = store_job(connection, sample, evaluate(sample, PROFILE))
+            connection.commit()
+            connection.close()
+            profile = root / "profile.json"
+            profile.write_text(json.dumps(PROFILE), encoding="utf-8")
+            handler = type("TestDashboardHandler", (DashboardHandler,), {"database": database, "profile": profile})
+            server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+            worker = threading.Thread(target=server.serve_forever, daemon=True)
+            worker.start()
+            try:
+                base = f"http://127.0.0.1:{server.server_port}"
+                with urllib.request.urlopen(base + "/api/jobs") as response:
+                    result = json.load(response)
+                self.assertEqual(result["jobs"][0]["description"], sample.description)
+                request = urllib.request.Request(base + f"/api/jobs/{job_id}/status", data=b'{"status":"approved"}', headers={"Content-Type": "application/json"}, method="POST")
+                with urllib.request.urlopen(request) as response:
+                    self.assertTrue(json.load(response)["updated"])
+                with urllib.request.urlopen(base + "/api/jobs?view=approved") as response:
+                    self.assertEqual(json.load(response)["jobs"][0]["status"], "approved")
+            finally:
+                server.shutdown()
+                server.server_close()
+                worker.join()
+
     def test_native_career_description_excludes_site_navigation(self):
         parser = CareerDescriptionParser()
         parser.feed('<nav>Other jobs</nav><span class="jobdescription"><p>Python <span>RAG</span></p><br>0–2 years</span><footer>Privacy</footer>')

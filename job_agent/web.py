@@ -25,7 +25,6 @@ def row_to_job(row: sqlite3.Row, profile: dict[str, Any] | None = None) -> dict[
     job["eligible"] = bool(job["eligible"])
     job["reasons"] = json.loads(job.pop("reasons_json"))
     job["warnings"] = json.loads(job.pop("warnings_json"))
-    job["description"] = job["description"][:4000]
     text = row["title"] + " " + row["description"]
     job["evidence"] = {
         "skills": [skill for skill in (profile or {}).get("candidate", {}).get("skill_keywords", []) if contains_term(text, skill)],
@@ -36,6 +35,18 @@ def row_to_job(row: sqlite3.Row, profile: dict[str, Any] | None = None) -> dict[
         "salary_status": "Published evidence" if salary_inr_annual(row["salary_text"] or text) else "Unknown; confirm ≥₹5 LPA",
         "fit_level": "Stretch" if any("Stretch role:" in warning for warning in job["warnings"]) else "Needs experience confirmation" if explicit_years_required(text) is None else "Experience compatible",
     }
+    search = (profile or {}).get("search", {})
+    tracks = []
+    if any(contains_term(text, term) for term in search.get("role_keywords", [])):
+        tracks.append("GenAI")
+    if sum(contains_term(text, term) for term in search.get("stack_match_keywords", [])) >= 2:
+        tracks.append("Stack match")
+    if row["company_type"] in {"mnc", "enterprise"} and (
+        job["evidence"]["years_required"] is not None and job["evidence"]["years_required"] <= 1
+        or re.search(r"\b(graduate|trainee|junior|fresher|associate|entry[- ]level)\b", row["title"], re.I)
+    ):
+        tracks.append("MNC fresher")
+    job["evidence"]["tracks"] = tracks
     return job
 
 
@@ -55,6 +66,7 @@ def build_snapshot_dashboard(database: Path, profile: Path, sources: Path, outpu
     serialized = json.dumps(snapshot, ensure_ascii=False).replace("</", "<\\/")
     template = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
     template = template.replace('href="styles.css"', 'href="web/styles.css"')
+    template = template.replace('src="filters.js"', 'src="web/filters.js"')
     template = template.replace(
         '<script src="app.js"></script>',
         f'<script>window.__JOB_AGENT_SNAPSHOT__={serialized};</script><script src="web/app.js"></script>',
@@ -125,7 +137,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return
         self.send_error(HTTPStatus.NOT_FOUND)
 
-    def connection(self) -> sqlite3.Connection:
+    def database_connection(self) -> sqlite3.Connection:
         return connect_database(self.database)
 
     def read_json(self) -> dict[str, Any]:
@@ -135,7 +147,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         return json.loads(self.rfile.read(length).decode("utf-8") or "{}")
 
     def summary(self) -> dict[str, Any]:
-        connection = self.connection()
+        connection = self.database_connection()
         row = connection.execute(
             """
             SELECT COUNT(*) total,
@@ -179,7 +191,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             clauses.append("source=?")
             values.append(source)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-        connection = self.connection()
+        connection = self.database_connection()
         rows = connection.execute(
             f"SELECT * FROM jobs {where} ORDER BY eligible DESC, score DESC, updated_at DESC",
             values,
@@ -191,7 +203,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def source_status(self) -> dict[str, Any]:
         configured = load_json(self.sources)["sources"]
-        connection = self.connection()
+        connection = self.database_connection()
         metrics = {
             row["source"]: dict(row)
             for row in connection.execute(
@@ -217,7 +229,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         return {"sources": result, "leads": load_json(self.sources).get("leads", [])}
 
     def activity(self) -> dict[str, Any]:
-        connection = self.connection()
+        connection = self.database_connection()
         scans = [dict(row) for row in connection.execute("SELECT * FROM scan_runs ORDER BY id DESC LIMIT 20")]
         events = [
             dict(row)
@@ -273,7 +285,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if status not in ALLOWED_STATUSES:
             self.send_json({"error": "Invalid status"}, HTTPStatus.BAD_REQUEST)
             return
-        connection = self.connection()
+        connection = self.database_connection()
         row = connection.execute("SELECT id FROM jobs WHERE id=?", (job_id,)).fetchone()
         if not row:
             connection.close()
