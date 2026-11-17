@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Job Agent Control Center</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="brand" href="#overview" aria-label="Job Agent home">
+        <span class="brand-mark">JA</span>
+        <span><strong>Job Agent</strong><small>Control center</small></span>
+      </a>
+      <nav aria-label="Main navigation">
+        <button class="nav-item active" data-section="overview"><span>01</span>Overview</button>
+        <button class="nav-item" data-section="jobs"><span>02</span>Job pipeline</button>
+        <button class="nav-item" data-section="sources"><span>03</span>Sources</button>
+        <button class="nav-item" data-section="activity"><span>04</span>Activity</button>
+        <button class="nav-item" data-section="profile"><span>05</span>Search profile</button>
+      </nav>
+      <div class="policy-card">
+        <span class="pulse"></span>
+        <strong>Approval mode</strong>
+        <p>No application is submitted without your approval.</p>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">PRIVATE JOB SEARCH OPERATIONS</p>
+          <h1 id="page-title">Overview</h1>
+        </div>
+        <div class="top-actions">
+          <span class="last-scan" id="last-scan">No scan recorded</span>
+          <button class="button primary" id="scan-button">Run scan now</button>
+        </div>
+      </header>
+
+      <section id="overview" class="page active">
+        <div class="hero-card">
+          <div>
+            <p class="eyebrow light">AGENT STATUS</p>
+            <h2>Searching broadly.<br>Filtering precisely.</h2>
+            <p>The agent prioritizes direct company career sites, then India-native portals and approved public feeds.</p>
+          </div>
+          <div class="orbit" aria-hidden="true"><span></span><span></span><span></span><b>LIVE</b></div>
+        </div>
+        <div class="metrics" id="metrics"></div>
+        <div class="grid two">
+          <article class="panel">
+            <div class="panel-head"><div><p class="eyebrow">PIPELINE</p><h3>Latest discoveries</h3></div><button class="text-button" data-jump="jobs">View all</button></div>
+            <div id="latest-jobs" class="compact-list empty">No jobs loaded.</div>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><div><p class="eyebrow">SOURCE HEALTH</p><h3>Highest priority channels</h3></div><button class="text-button" data-jump="sources">Manage</button></div>
+            <div id="priority-sources" class="compact-list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="jobs" class="page">
+        <div class="toolbar">
+          <div class="tabs" id="job-tabs">
+            <button class="active" data-view="all">All found</button>
+            <button data-view="shortlisted">Shortlisted</button>
+            <button data-view="review">Needs approval</button>
+            <button data-view="approved">Approved</button>
+            <button data-view="applied">Applied</button>
+            <button data-view="filtered">Filtered out</button>
+          </div>
+          <label class="search"><span>Search</span><input id="job-search" placeholder="Title, company, skill or location"></label>
+        </div>
+        <div class="jobs-layout">
+          <div class="jobs-list" id="jobs-list"></div>
+          <aside class="job-detail" id="job-detail">
+            <div class="empty-detail"><span>↗</span><h3>Select a job</h3><p>See its score, filtering evidence, warnings and application link.</p></div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="sources" class="page">
+        <div class="section-intro">
+          <div><p class="eyebrow">DISCOVERY NETWORK</p><h2>Sources and company sites</h2></div>
+          <p>Direct company careers and ATS boards are highest priority. Popular portals remain candidate-controlled launch points unless they provide an approved public interface.</p>
+        </div>
+        <div class="source-groups" id="source-groups"></div>
+      </section>
+
+      <section id="activity" class="page">
+        <div class="section-intro"><div><p class="eyebrow">AUDIT TRAIL</p><h2>What the agent is doing</h2></div><p>Every scan and candidate decision is recorded locally.</p></div>
+        <div class="grid two"><article class="panel"><h3>Scan history</h3><div id="scan-history" class="timeline"></div></article><article class="panel"><h3>Decision history</h3><div id="event-history" class="timeline"></div></article></div>
+      </section>
+
+      <section id="profile" class="page">
+        <div class="section-intro"><div><p class="eyebrow">ACTIVE RULESET</p><h2>Your search profile</h2></div><p>These rules are applied before anything reaches the approval queue.</p></div>
+        <div id="profile-content" class="profile-grid"></div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>

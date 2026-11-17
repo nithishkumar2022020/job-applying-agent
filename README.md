@@ -10,6 +10,9 @@ A privacy-first Python CLI that discovers jobs, applies deterministic eligibilit
 - India-compatible location validation and configurable exclusions
 - Salary, experience, seniority, startup-size, and URL safeguards
 - SQLite history, deduplication, approval states, and HTML dashboard
+- Local control center showing all discoveries, filtered jobs, shortlists, approvals, scans, and source health
+- Candidate-controlled launch links for LinkedIn, Indeed India, Naukri, Wellfound, Foundit, and Cutshort
+- High-priority direct career links for Microsoft, Google, Amazon, IBM, and Accenture
 - Four-hour macOS scheduling template
 
 ## Setup
@@ -23,6 +26,30 @@ python3 -m job_agent discover
 python3 -m job_agent list
 python3 -m job_agent dashboard
 ```
+
+## Control Center
+
+Start the private local website:
+
+```bash
+./start_ui.sh
+```
+
+Or run it directly:
+
+```bash
+python3 -m job_agent serve --host 127.0.0.1 --port 8765 --open
+```
+
+The control center runs only on your computer. It shows every discovered job, filtering evidence, shortlisted roles, approval state, scan history, source health, and your active search rules. The **Run scan now** button performs discovery; it never submits an application.
+
+Popular portals that do not expose an approved public interface are included as manual launch links rather than scraped. Direct employer ATS connectors and company career sites remain the highest-priority source class.
+
+## Hosted Dashboard
+
+GitHub Pages publishes a privacy-safe read-only dashboard from `develop`. A scheduled workflow refreshes public sources every four hours and redeploys the result. The hosted build uses `profile.pages.json`, which deliberately excludes resume paths, contact details, local databases, application history, and private candidate files.
+
+Approvals, status updates, and application actions remain available only in the private local control center.
 
 Customize `profile.json` before discovery. The file is ignored by Git because it may contain personal preferences and a local resume path.
 

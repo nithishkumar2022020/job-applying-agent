@@ -432,6 +432,27 @@ def connect_database(path: Path) -> sqlite3.Connection:
             created_at TEXT NOT NULL,
             FOREIGN KEY(job_id) REFERENCES jobs(id)
         );
+        CREATE TABLE IF NOT EXISTS scan_runs (
+            id INTEGER PRIMARY KEY,
+            started_at TEXT NOT NULL,
+            completed_at TEXT,
+            fetched INTEGER NOT NULL DEFAULT 0,
+            created INTEGER NOT NULL DEFAULT 0,
+            eligible INTEGER NOT NULL DEFAULT 0,
+            failure_count INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'running'
+        );
+        CREATE TABLE IF NOT EXISTS source_runs (
+            id INTEGER PRIMARY KEY,
+            scan_run_id INTEGER NOT NULL,
+            source TEXT NOT NULL,
+            source_kind TEXT NOT NULL,
+            fetched INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL,
+            error TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(scan_run_id) REFERENCES scan_runs(id)
+        );
         """
     )
     return connection
@@ -499,6 +520,12 @@ def discover(args: argparse.Namespace) -> int:
     profile = load_json(Path(args.profile))
     sources = load_json(Path(args.sources))["sources"]
     connection = connect_database(Path(args.database))
+    run_cursor = connection.execute(
+        "INSERT INTO scan_runs (started_at, status) VALUES (?, 'running')",
+        (now_iso(),),
+    )
+    scan_run_id = int(run_cursor.lastrowid)
+    connection.commit()
     fetched = created = eligible = 0
     failures = []
     for source in sources:
@@ -508,6 +535,10 @@ def discover(args: argparse.Namespace) -> int:
         connector = CONNECTORS.get(kind)
         if connector is None:
             failures.append(f"{source['name']}: unsupported connector {kind}")
+            connection.execute(
+                "INSERT INTO source_runs (scan_run_id, source, source_kind, status, error, created_at) VALUES (?, ?, ?, 'failed', ?, ?)",
+                (scan_run_id, source["name"], str(kind), f"Unsupported connector: {kind}", now_iso()),
+            )
             continue
         try:
             jobs = connector(source)
@@ -519,10 +550,29 @@ def discover(args: argparse.Namespace) -> int:
                 created += int(is_new)
                 if is_new:
                     record_event(connection, job_id, "discovered", f"score={decision.score}; eligible={decision.eligible}")
+            connection.execute(
+                "INSERT INTO source_runs (scan_run_id, source, source_kind, fetched, status, created_at) VALUES (?, ?, ?, ?, 'complete', ?)",
+                (scan_run_id, source["name"], str(kind), len(jobs), now_iso()),
+            )
             connection.commit()
             print(f"{source['name']}: {len(jobs)} jobs fetched")
         except (OSError, ValueError, KeyError, ET.ParseError, urllib.error.URLError) as error:
             failures.append(f"{source['name']}: {error}")
+            connection.execute(
+                "INSERT INTO source_runs (scan_run_id, source, source_kind, status, error, created_at) VALUES (?, ?, ?, 'failed', ?, ?)",
+                (scan_run_id, source["name"], str(kind), str(error), now_iso()),
+            )
+            connection.commit()
+    run_status = "failed" if failures and fetched == 0 else "complete_with_warnings" if failures else "complete"
+    connection.execute(
+        """
+        UPDATE scan_runs
+        SET completed_at=?, fetched=?, created=?, eligible=?, failure_count=?, status=?
+        WHERE id=?
+        """,
+        (now_iso(), fetched, created, eligible, len(failures), run_status, scan_run_id),
+    )
+    connection.commit()
     print(f"Fetched {fetched}; new {created}; eligible {eligible}")
     for failure in failures:
         print(f"WARNING: {failure}", file=sys.stderr)
@@ -609,39 +659,29 @@ def open_job(args: argparse.Namespace) -> int:
 
 
 def write_dashboard(args: argparse.Namespace) -> int:
-    connection = connect_database(Path(args.database))
-    rows = query_jobs(connection, args.status, args.minimum_score)[: args.limit]
-    cards = []
-    for row in rows:
-        reasons = "".join(f"<li>{html.escape(reason)}</li>" for reason in json.loads(row["reasons_json"]))
-        warnings = "".join(f"<li>{html.escape(warning)}</li>" for warning in json.loads(row["warnings_json"]))
-        cards.append(
-            f"""
-            <article>
-              <div class="score">{row['score']}</div>
-              <h2>{html.escape(row['title'])}</h2>
-              <p class="meta">{html.escape(row['company'])} · {html.escape(row['location'])} · {html.escape(row['source'])}</p>
-              <p><strong>Status:</strong> {html.escape(row['status'])} · <strong>ID:</strong> {row['id']}</p>
-              <h3>Why it matched</h3><ul>{reasons}</ul>
-              {f'<h3>Review before approval</h3><ul>{warnings}</ul>' if warnings else ''}
-              <p><a href="{html.escape(row['apply_url'])}" target="_blank" rel="noreferrer">Open source listing</a></p>
-              <code>python -m job_agent approve {row['id']} --open</code>
-            </article>
-            """
-        )
-    output = Path(args.output)
-    output.write_text(
-        f"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Job approval queue</title><style>
-body{{font-family:Arial,sans-serif;background:#f4f7fb;color:#172033;margin:0;padding:32px}}main{{max-width:980px;margin:auto}}
-h1{{margin:0 0 8px}}.sub{{color:#5d6779;margin-bottom:28px}}article{{position:relative;background:#fff;border:1px solid #dce2eb;border-radius:14px;padding:24px;margin:18px 0;box-shadow:0 4px 18px #15233a12}}
-.score{{position:absolute;right:22px;top:20px;background:#17365d;color:white;border-radius:999px;width:48px;height:48px;display:grid;place-items:center;font-weight:700}}
-h2{{margin:0 60px 6px 0}}h3{{font-size:15px;margin-bottom:5px}}.meta{{color:#5d6779}}a{{color:#174f87;font-weight:700}}code{{display:inline-block;background:#eef2f7;padding:8px 10px;border-radius:7px}}
-</style></head><body><main><h1>Job approval queue</h1><p class="sub">Generated {now_iso()}. Approval is required before every application.</p>{''.join(cards) or '<p>No matching jobs.</p>'}</main></body></html>""",
-        encoding="utf-8",
+    from .web import build_snapshot_dashboard
+
+    output = build_snapshot_dashboard(
+        database=Path(args.database),
+        profile=Path(args.profile),
+        sources=Path(args.sources),
+        output=Path(args.output),
     )
     print(output.resolve())
+    return 0
+
+
+def serve_dashboard(args: argparse.Namespace) -> int:
+    from .web import serve
+
+    serve(
+        database=Path(args.database),
+        profile=Path(args.profile),
+        sources=Path(args.sources),
+        host=args.host,
+        port=args.port,
+        open_browser=args.open,
+    )
     return 0
 
 
@@ -678,10 +718,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     dashboard_parser = subparsers.add_parser("dashboard", help="Write a static HTML review queue")
     dashboard_parser.add_argument("--output", default=str(DEFAULT_DASHBOARD))
-    dashboard_parser.add_argument("--status", default="review")
-    dashboard_parser.add_argument("--minimum-score", type=int, default=65)
-    dashboard_parser.add_argument("--limit", type=int, default=50)
+    dashboard_parser.add_argument("--profile", default=str(DEFAULT_PROFILE))
+    dashboard_parser.add_argument("--sources", default=str(DEFAULT_SOURCES))
     dashboard_parser.set_defaults(handler=write_dashboard)
+
+    serve_parser = subparsers.add_parser("serve", help="Run the local monitoring and approval control center")
+    serve_parser.add_argument("--profile", default=str(DEFAULT_PROFILE))
+    serve_parser.add_argument("--sources", default=str(DEFAULT_SOURCES))
+    serve_parser.add_argument("--host", default="127.0.0.1")
+    serve_parser.add_argument("--port", type=int, default=8765)
+    serve_parser.add_argument("--open", action="store_true")
+    serve_parser.set_defaults(handler=serve_dashboard)
     return parser
 
 

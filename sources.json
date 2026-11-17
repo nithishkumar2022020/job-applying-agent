@@ -4,49 +4,182 @@
       "name": "Himalayas Remote Jobs",
       "kind": "rss",
       "url": "https://himalayas.app/jobs/rss",
+      "homepage": "https://himalayas.app/jobs",
       "enabled": true,
+      "priority": 70,
+      "source_type": "public_feed",
+      "access_mode": "automated_discovery",
       "company_type": "mixed"
     },
     {
       "name": "Remotive",
       "kind": "remotive",
       "url": "https://remotive.com/api/remote-jobs",
+      "homepage": "https://remotive.com/remote-jobs",
       "enabled": true,
+      "priority": 65,
+      "source_type": "public_api",
+      "access_mode": "automated_discovery",
       "company_type": "unknown"
     },
     {
       "name": "Arbeitnow",
       "kind": "arbeitnow",
       "url": "https://www.arbeitnow.com/api/job-board-api",
+      "homepage": "https://www.arbeitnow.com/",
       "enabled": true,
+      "priority": 45,
+      "source_type": "public_api",
+      "access_mode": "automated_discovery",
       "company_type": "unknown"
     },
     {
       "name": "Jobicy AI Jobs",
       "kind": "jobicy",
       "url": "https://jobicy.com/api/v2/remote-jobs?count=50&tag=ai",
+      "homepage": "https://jobicy.com/",
       "enabled": true,
+      "priority": 65,
+      "source_type": "public_api",
+      "access_mode": "automated_discovery",
       "company_type": "unknown"
     },
     {
-      "name": "Example Greenhouse Company",
+      "name": "LinkedIn Jobs India",
+      "kind": "manual",
+      "homepage": "https://www.linkedin.com/jobs/search/?keywords=generative%20ai&location=India",
+      "enabled": false,
+      "priority": 75,
+      "source_type": "india_portal",
+      "access_mode": "manual_search",
+      "note": "Available in the dashboard as a launch link; no bot access or automated applications."
+    },
+    {
+      "name": "Indeed India",
+      "kind": "manual",
+      "homepage": "https://in.indeed.com/jobs?q=generative+ai&l=India",
+      "enabled": false,
+      "priority": 75,
+      "source_type": "india_portal",
+      "access_mode": "manual_search",
+      "note": "Available in the dashboard as a launch link; no scraping or automated applications."
+    },
+    {
+      "name": "Naukri",
+      "kind": "manual",
+      "homepage": "https://www.naukri.com/generative-ai-jobs?k=generative%20ai",
+      "enabled": false,
+      "priority": 90,
+      "source_type": "india_portal",
+      "access_mode": "manual_search",
+      "note": "High-value India-native portal; launched for candidate-controlled review."
+    },
+    {
+      "name": "Wellfound India",
+      "kind": "manual",
+      "homepage": "https://wellfound.com/jobs",
+      "enabled": false,
+      "priority": 70,
+      "source_type": "india_portal",
+      "access_mode": "manual_search",
+      "note": "Startup source; only mid-sized or premium-paying employers should be approved."
+    },
+    {
+      "name": "Foundit India",
+      "kind": "manual",
+      "homepage": "https://www.foundit.in/",
+      "enabled": false,
+      "priority": 70,
+      "source_type": "india_portal",
+      "access_mode": "manual_search"
+    },
+    {
+      "name": "Cutshort",
+      "kind": "manual",
+      "homepage": "https://cutshort.io/jobs",
+      "enabled": false,
+      "priority": 75,
+      "source_type": "india_portal",
+      "access_mode": "manual_search"
+    },
+    {
+      "name": "Microsoft Careers India",
+      "kind": "manual",
+      "homepage": "https://jobs.careers.microsoft.com/global/en/search?lc=India",
+      "enabled": false,
+      "priority": 100,
+      "source_type": "company_careers",
+      "access_mode": "direct_company_search",
+      "company_type": "mnc"
+    },
+    {
+      "name": "Google Careers India",
+      "kind": "manual",
+      "homepage": "https://www.google.com/about/careers/applications/jobs/results/?location=India",
+      "enabled": false,
+      "priority": 100,
+      "source_type": "company_careers",
+      "access_mode": "direct_company_search",
+      "company_type": "mnc"
+    },
+    {
+      "name": "Amazon Jobs India",
+      "kind": "manual",
+      "homepage": "https://www.amazon.jobs/en/search?loc_query=India",
+      "enabled": false,
+      "priority": 100,
+      "source_type": "company_careers",
+      "access_mode": "direct_company_search",
+      "company_type": "mnc"
+    },
+    {
+      "name": "IBM Careers India",
+      "kind": "manual",
+      "homepage": "https://www.ibm.com/in-en/careers/search",
+      "enabled": false,
+      "priority": 95,
+      "source_type": "company_careers",
+      "access_mode": "direct_company_search",
+      "company_type": "mnc"
+    },
+    {
+      "name": "Accenture India Careers",
+      "kind": "manual",
+      "homepage": "https://www.accenture.com/in-en/careers/jobsearch",
+      "enabled": false,
+      "priority": 95,
+      "source_type": "company_careers",
+      "access_mode": "direct_company_search",
+      "company_type": "mnc"
+    },
+    {
+      "name": "Target Greenhouse Employer",
       "kind": "greenhouse",
       "slug": "replace-with-board-token",
       "enabled": false,
+      "priority": 100,
+      "source_type": "company_ats",
+      "access_mode": "automated_discovery",
       "company_type": "enterprise"
     },
     {
-      "name": "Example Lever Company",
+      "name": "Target Lever Employer",
       "kind": "lever",
       "slug": "replace-with-company-slug",
       "enabled": false,
+      "priority": 100,
+      "source_type": "company_ats",
+      "access_mode": "automated_discovery",
       "company_type": "mid-size"
     },
     {
-      "name": "Example Ashby Company",
+      "name": "Target Ashby Employer",
       "kind": "ashby",
       "slug": "replace-with-job-board-name",
       "enabled": false,
+      "priority": 100,
+      "source_type": "company_ats",
+      "access_mode": "automated_discovery",
       "company_type": "mid-size"
     }
   ]

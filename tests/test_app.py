@@ -1,8 +1,10 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from job_agent.app import Job, clean_text, connect_database, contains_term, evaluate, salary_inr_annual, stable_key, store_job
+from job_agent.web import DashboardHandler, build_snapshot_dashboard
 
 
 PROFILE = {
@@ -113,6 +115,48 @@ class StorageTests(unittest.TestCase):
             self.assertFalse(second_created)
             self.assertEqual(first_id, second_id)
             self.assertEqual(stable_key(sample), stable_key(sample))
+
+    def test_dashboard_summary_reports_pipeline_counts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "jobs.sqlite3"
+            connection = connect_database(database)
+            sample = job()
+            store_job(connection, sample, evaluate(sample, PROFILE))
+            connection.commit()
+            handler = object.__new__(DashboardHandler)
+            handler.database = database
+            summary = handler.summary()
+            self.assertEqual(summary["counts"]["total"], 1)
+            self.assertEqual(summary["counts"]["shortlisted"], 1)
+            self.assertFalse(summary["submission_enabled"])
+
+    def test_scan_tables_are_created(self):
+        with tempfile.TemporaryDirectory() as directory:
+            connection = connect_database(Path(directory) / "jobs.sqlite3")
+            tables = {
+                row[0]
+                for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            }
+            self.assertIn("scan_runs", tables)
+            self.assertIn("source_runs", tables)
+
+    def test_snapshot_dashboard_contains_all_jobs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = root / "jobs.sqlite3"
+            connection = connect_database(database)
+            sample = job()
+            store_job(connection, sample, evaluate(sample, PROFILE))
+            connection.commit()
+            profile = root / "profile.json"
+            profile.write_text(json.dumps(PROFILE), encoding="utf-8")
+            sources = root / "sources.json"
+            sources.write_text('{"sources": []}', encoding="utf-8")
+            output = root / "dashboard.html"
+            build_snapshot_dashboard(database, profile, sources, output)
+            contents = output.read_text(encoding="utf-8")
+            self.assertIn("window.__JOB_AGENT_SNAPSHOT__", contents)
+            self.assertIn(sample.title, contents)
 
 
 if __name__ == "__main__":
