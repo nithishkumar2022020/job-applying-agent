@@ -100,6 +100,7 @@ class ResumeSync:
             
             personal:
               first_name: "..."
+              middle_name: "..."
               last_name: "..."
               full_name: "..."
               email: "..."

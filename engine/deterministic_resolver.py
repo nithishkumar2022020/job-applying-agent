@@ -30,13 +30,21 @@ class DeterministicResolver:
         if re.search(r'\b(first[\s_-]?name|given[\s_-]?name|forename)\b', clean_label):
             return self.personal.get("first_name", ""), "first_name"
 
-        # 2. Last Name
+        # 2. Middle Name
+        if re.search(r'\b(middle[\s_-]?name|second[\s_-]?name|middle[\s_-]?initial)\b', clean_label):
+            return self.personal.get("middle_name", ""), "middle_name"
+
+        # 3. Last Name
         if re.search(r'\b(last[\s_-]?name|family[\s_-]?name|surname)\b', clean_label):
             return self.personal.get("last_name", ""), "last_name"
 
-        # 3. Full Name
+        # 4. Full Name
         if re.search(r'\b(full[\s_-]?name|legal[\s_-]?name|your name)\b', clean_label):
-            return self.personal.get("full_name", f"{self.personal.get('first_name')} {self.personal.get('last_name')}"), "full_name"
+            fn = self.personal.get('first_name', '')
+            mn = self.personal.get('middle_name', '')
+            ln = self.personal.get('last_name', '')
+            computed = " ".join(part for part in [fn, mn, ln] if part).strip()
+            return self.personal.get("full_name") or computed, "full_name"
 
         # 4. Email
         if re.search(r'\b(email|e-mail|mail address)\b', clean_label):

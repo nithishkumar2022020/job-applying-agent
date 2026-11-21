@@ -1,4 +1,4 @@
-// Wrangler Stealth Agent - Web Dashboard Frontend Controller
+// WRANGLER // Autonomous Stealth Job Hunter - Neo-Retro Dashboard Controller
 
 let API_BASE = localStorage.getItem("wrangler_backend_url");
 if (!API_BASE) {
@@ -17,6 +17,12 @@ document.addEventListener("DOMContentLoaded", () => {
   fetchSettings();
   fetchApplications();
   setInterval(fetchStatus, 3000);
+
+  // Auto-update full name preview when typing in First, Middle, or Last name
+  ['profFirstName', 'profMiddleName', 'profLastName'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateFullNamePreview);
+  });
 });
 
 function getApiUrl(path) {
@@ -27,8 +33,8 @@ function getApiUrl(path) {
 function switchTab(tab) {
   document.querySelectorAll(".tab-content").forEach(el => el.classList.add("hidden"));
   document.querySelectorAll(".tab-btn").forEach(el => {
-    el.classList.remove("text-emerald-400", "border-emerald-400");
-    el.classList.add("text-slate-400", "border-transparent");
+    el.classList.remove("bg-[#00ff88]", "text-black", "border-black");
+    el.classList.add("bg-[#12151e]", "text-slate-300", "border-[#262c3e]");
   });
 
   const activeContent = document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
@@ -36,8 +42,8 @@ function switchTab(tab) {
 
   if (activeContent) activeContent.classList.remove("hidden");
   if (activeBtn) {
-    activeBtn.classList.remove("text-slate-400", "border-transparent");
-    activeBtn.classList.add("text-emerald-400", "border-emerald-400");
+    activeBtn.classList.remove("bg-[#12151e]", "text-slate-300", "border-[#262c3e]");
+    activeBtn.classList.add("bg-[#00ff88]", "text-black", "border-black");
   }
 }
 
@@ -56,7 +62,7 @@ function initWebSocket() {
       setTimeout(initWebSocket, 4000);
     };
   } catch (e) {
-    console.warn("WebSocket init error:", e);
+    console.warn("WebSocket link error:", e);
   }
 }
 
@@ -68,12 +74,13 @@ function appendTerminalLog(message, level = "info") {
   const time = new Date().toLocaleTimeString();
 
   let color = "text-slate-300";
-  if (level === "success") color = "text-emerald-400";
-  if (level === "warning") color = "text-amber-400";
-  if (level === "error") color = "text-rose-400";
+  let prefix = "[SYS]";
+  if (level === "success") { color = "text-[#00ff88] font-bold"; prefix = "[OK ]"; }
+  if (level === "warning") { color = "text-amber-400 font-bold"; prefix = "[WRN]"; }
+  if (level === "error") { color = "text-[#ff2a6d] font-bold"; prefix = "[ERR]"; }
 
   line.className = `flex items-start gap-2 ${color}`;
-  line.innerHTML = `<span class="text-slate-600 select-none">[${time}]</span> <span>${escapeHtml(message)}</span>`;
+  line.innerHTML = `<span class="text-slate-600 select-none">[${time}] ${prefix}</span> <span>${escapeHtml(message)}</span>`;
 
   body.appendChild(line);
   body.scrollTop = body.scrollHeight;
@@ -81,100 +88,109 @@ function appendTerminalLog(message, level = "info") {
 
 function clearTerminal() {
   const body = document.getElementById("terminalBody");
-  if (body) body.innerHTML = "";
+  if (body) {
+    body.innerHTML = `<div class="text-[#00ff88] font-bold">// TERMINAL BUFFER CLEARED</div>`;
+  }
 }
 
-// Status & KPIs
+// Status, VU Meter & KPIs
 async function fetchStatus() {
   try {
     const res = await fetch(getApiUrl("/api/status"));
-    if (!res.ok) throw new Error("Status failed");
+    if (!res.ok) throw new Error("Status unreachable");
     const data = await res.json();
 
-    // Badges
+    // Chrome CDP Hardware Badge
     const chromeBadge = document.getElementById("chromeBadge");
     if (data.chrome_connected) {
-      chromeBadge.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-      chromeBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span>Chrome: Port 9222 Active</span>`;
+      chromeBadge.className = "flex items-center gap-2 px-3 py-1.5 bg-[#171a24] border-2 border-[#00ff88] text-xs font-mono font-bold text-[#00ff88] shadow-[2px_2px_0px_#000]";
+      chromeBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-[#00ff88]"></span><span>CDP:9222 [ONLINE]</span>`;
     } else {
-      chromeBadge.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20";
-      chromeBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span><span>Chrome: Disconnected</span>`;
+      chromeBadge.className = "flex items-center gap-2 px-3 py-1.5 bg-[#171a24] border-2 border-[#ff2a6d] text-xs font-mono font-bold text-[#ff2a6d] shadow-[2px_2px_0px_#000]";
+      chromeBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-[#ff2a6d] animate-pulse"></span><span>CDP:9222 [OFFLINE]</span>`;
     }
 
+    // Agent Hardware Badge
     const agentBadge = document.getElementById("agentBadge");
     const btnStartCopilot = document.getElementById("btnStartCopilot");
     const btnStartBatch = document.getElementById("btnStartBatch");
     const btnStop = document.getElementById("btnStop");
-    const activeActionLabel = document.getElementById("activeActionLabel");
 
     if (data.is_running) {
-      agentBadge.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
-      agentBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span><span>Agent: ${data.current_mode.toUpperCase()}</span>`;
+      agentBadge.className = "flex items-center gap-2 px-3 py-1.5 bg-[#171a24] border-2 border-[#00e5ff] text-xs font-mono font-bold text-[#00e5ff] shadow-[2px_2px_0px_#000]";
+      agentBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-[#00e5ff] animate-ping"></span><span>CORE: [${data.current_mode.toUpperCase()}]</span>`;
       btnStartCopilot.disabled = true;
       btnStartBatch.disabled = true;
       btnStop.disabled = false;
-      activeActionLabel.textContent = `Running: ${data.current_mode.toUpperCase()}`;
-      activeActionLabel.className = "text-xs font-normal px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300";
     } else {
-      agentBadge.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-400 border border-slate-700";
-      agentBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-500"></span><span>Agent: IDLE</span>`;
+      agentBadge.className = "flex items-center gap-2 px-3 py-1.5 bg-[#171a24] border-2 border-[#2a3044] text-xs font-mono font-bold text-slate-400 shadow-[2px_2px_0px_#000]";
+      agentBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span><span>CORE: [IDLE]</span>`;
       btnStartCopilot.disabled = false;
       btnStartBatch.disabled = false;
       btnStop.disabled = true;
-      activeActionLabel.textContent = "Idle";
-      activeActionLabel.className = "text-xs font-normal px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400";
     }
 
-    // Counters
+    // Numeric Counters
     const stats = data.stats || {};
     const today = stats.today_count || 0;
     const maxDaily = data.limits?.max_daily_applications || 35;
     document.getElementById("statTodayCount").textContent = today;
-    document.getElementById("statMaxDaily").textContent = `/ ${maxDaily} cap`;
+    document.getElementById("statMaxDaily").textContent = `/ ${maxDaily} TARGET`;
     document.getElementById("statTotalCount").textContent = stats.total_processed || 0;
     document.getElementById("statCacheCount").textContent = stats.cached_qas || 0;
 
-    const pct = Math.min(100, Math.round((today / maxDaily) * 100));
-    document.getElementById("statProgressBar").style.width = `${pct}%`;
+    // Segmented VU Meter (10 discrete analog blocks)
+    const activeBlocks = Math.min(10, Math.ceil((today / maxDaily) * 10));
+    for (let i = 1; i <= 10; i++) {
+      const vu = document.getElementById(`vu${i}`);
+      if (!vu) continue;
+      if (i <= activeBlocks) {
+        vu.className = i > 8 ? "h-full flex-1 bg-[#ff2a6d]" : (i > 6 ? "h-full flex-1 bg-amber-400" : "h-full flex-1 bg-[#00ff88]");
+      } else {
+        vu.className = "h-full flex-1 bg-[#1a202c]";
+      }
+    }
 
   } catch (err) {
-    // Backend offline
     const agentBadge = document.getElementById("agentBadge");
-    agentBadge.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-500 border border-slate-700";
-    agentBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-600"></span><span>Backend: Offline</span>`;
+    if (agentBadge) {
+      agentBadge.className = "flex items-center gap-2 px-3 py-1.5 bg-[#171a24] border-2 border-[#ff2a6d] text-xs font-mono font-bold text-[#ff2a6d] shadow-[2px_2px_0px_#000]";
+      agentBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-[#ff2a6d]"></span><span>BACKEND: OFFLINE</span>`;
+    }
   }
 }
 
-// Applications Feed
+// Applications Feed with Industrial Badges
 async function fetchApplications() {
   try {
-    const res = await fetch(getApiUrl("/api/applications?limit=20"));
+    const res = await fetch(getApiUrl("/api/applications?limit=25"));
     if (!res.ok) return;
     const apps = await res.json();
     const container = document.getElementById("applicationsList");
 
     if (!apps || apps.length === 0) {
-      container.innerHTML = `<div class="p-8 text-center text-slate-500 text-sm">No applications recorded yet. Start a run!</div>`;
+      container.innerHTML = `<div class="p-8 text-center text-slate-500 text-xs font-mono">// NO JOBS RECORDED YET. START CO-PILOT OR BATCH HUNT.</div>`;
       return;
     }
 
     container.innerHTML = apps.map(app => {
-      let badge = "bg-slate-800 text-slate-400";
-      if (app.status.includes("SUBMITTED")) badge = "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-      if (app.status.includes("PENDING")) badge = "bg-amber-500/20 text-amber-300 border border-amber-500/30";
+      let statusBadge = "bg-[#171b26] text-slate-400 border border-slate-700";
+      if (app.status.includes("SUBMITTED")) statusBadge = "bg-[#00ff88]/15 text-[#00ff88] border-2 border-[#00ff88]";
+      if (app.status.includes("PENDING")) statusBadge = "bg-amber-400/15 text-amber-300 border-2 border-amber-400";
 
       return `
-        <div class="p-4 hover:bg-white/[0.02] transition-colors flex items-center justify-between gap-4">
+        <div class="p-3 bg-[#0d1017] hover:bg-[#121622] transition-colors border-2 border-[#1c2233] mb-2 flex items-center justify-between gap-4 font-mono">
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
-              <span class="font-semibold text-sm text-white truncate">${escapeHtml(app.job_title)}</span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded uppercase font-mono bg-white/5 text-slate-400">${escapeHtml(app.platform)}</span>
+              <span class="font-bold text-xs text-white truncate">[${escapeHtml(app.platform.toUpperCase())}] ${escapeHtml(app.job_title)}</span>
             </div>
-            <div class="text-xs text-slate-400 truncate mt-0.5">${escapeHtml(app.company_name)} &bull; <span class="font-mono text-slate-500">${app.created_at ? app.created_at.slice(0, 16) : ''}</span></div>
+            <div class="text-[11px] text-slate-400 truncate mt-1">
+              🏢 ${escapeHtml(app.company_name)} &bull; <span class="text-slate-500">${app.created_at ? app.created_at.slice(0, 16) : ''}</span>
+            </div>
           </div>
-          <div class="flex items-center gap-3">
-            <span class="text-xs font-medium px-2.5 py-1 rounded-full ${badge}">${escapeHtml(app.status)}</span>
-            ${app.job_url ? `<a href="${app.job_url}" target="_blank" class="text-slate-500 hover:text-white"><i data-lucide="external-link" class="w-4 h-4"></i></a>` : ''}
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-bold px-2.5 py-1 ${statusBadge}">[${escapeHtml(app.status)}]</span>
+            ${app.job_url ? `<a href="${app.job_url}" target="_blank" class="p-1 bg-[#171b26] text-slate-400 hover:text-white border border-[#2a3044]"><i data-lucide="external-link" class="w-3.5 h-3.5"></i></a>` : ''}
           </div>
         </div>
       `;
@@ -182,11 +198,11 @@ async function fetchApplications() {
 
     lucide.createIcons();
   } catch (err) {
-    console.warn("Failed fetching applications:", err);
+    console.warn("Error fetching applications:", err);
   }
 }
 
-// Run Actions
+// Commands & Actions
 async function startCopilot() {
   try {
     const res = await fetch(getApiUrl("/api/run/copilot"), { method: "POST" });
@@ -197,7 +213,7 @@ async function startCopilot() {
       alert(data.message);
     }
   } catch (err) {
-    alert("Could not reach backend: " + err.message);
+    alert("Connection error: " + err.message);
   }
 }
 
@@ -230,7 +246,7 @@ async function confirmStartBatch() {
       alert(data.message);
     }
   } catch (err) {
-    alert("Failed starting batch: " + err.message);
+    alert("Batch error: " + err.message);
   }
 }
 
@@ -249,7 +265,7 @@ async function handleResumeUpload(event) {
   if (!file) return;
 
   const statusEl = document.getElementById("uploadStatusText");
-  statusEl.textContent = "Uploading & extracting via AI...";
+  statusEl.textContent = "// EXTRACTING CANDIDATE SPECS VIA MULTIMODAL AI...";
 
   const formData = new FormData();
   formData.append("file", file);
@@ -261,7 +277,7 @@ async function handleResumeUpload(event) {
     });
 
     if (!res.ok) {
-      let errorMsg = `Server error ${res.status}`;
+      let errorMsg = `HTTP_${res.status}`;
       try {
         const errJson = await res.json();
         errorMsg = errJson.message || errorMsg;
@@ -269,23 +285,34 @@ async function handleResumeUpload(event) {
         const errText = await res.text();
         if (errText) errorMsg = errText;
       }
-      throw new Error(`${errorMsg}. Please ensure the local agent backend is running on ${API_BASE}`);
+      throw new Error(`${errorMsg}. Verify local agent is running on ${API_BASE}`);
     }
 
     const data = await res.json();
     if (data.status === "ok") {
-      statusEl.textContent = "✨ Auto-synced from latest resume!";
+      statusEl.textContent = "⚡ RESUME PARSED & SYNCED TO DISK!";
       fetchProfile();
       fetchStatus();
     } else {
-      statusEl.textContent = "Upload failed.";
+      statusEl.textContent = "UPLOAD FAILED.";
     }
   } catch (err) {
-    statusEl.textContent = "Error: " + err.message;
+    statusEl.textContent = "ERR: " + err.message;
   }
 }
 
-// Profile & Settings
+// Profile Dossier (First, Middle, Last Name Handling)
+function updateFullNamePreview() {
+  const fn = document.getElementById("profFirstName").value.trim();
+  const mn = document.getElementById("profMiddleName").value.trim();
+  const ln = document.getElementById("profLastName").value.trim();
+  const badge = document.getElementById("fullNamePreviewBadge");
+  if (badge) {
+    const computed = [fn, mn, ln].filter(Boolean).join(" ");
+    badge.textContent = `ID: ${computed || "UNNAMED CANDIDATE"}`;
+  }
+}
+
 async function fetchProfile() {
   try {
     const res = await fetch(getApiUrl("/api/profile"));
@@ -296,13 +323,19 @@ async function fetchProfile() {
     const c = currentProfile.career_details || {};
     const s = currentProfile.socials || {};
 
-    document.getElementById("profFullName").value = p.full_name || "";
+    // First, Middle, Last Name handling
+    document.getElementById("profFirstName").value = p.first_name || "";
+    document.getElementById("profMiddleName").value = p.middle_name || "";
+    document.getElementById("profLastName").value = p.last_name || "";
+    updateFullNamePreview();
+
     document.getElementById("profEmail").value = p.email || "";
     document.getElementById("profPhone").value = p.phone || "";
     document.getElementById("profLocation").value = `${p.city || ""}, ${p.country || ""}`;
     document.getElementById("profNotice").value = c.current_notice_period_days || 15;
     document.getElementById("profExpectedCTC").value = c.expected_ctc_inr || 1600000;
     document.getElementById("profLinkedIn").value = s.linkedin || "";
+    document.getElementById("profGitHub").value = s.github || "";
   } catch (err) {}
 }
 
@@ -311,12 +344,21 @@ async function saveProfile() {
   currentProfile.career_details = currentProfile.career_details || {};
   currentProfile.socials = currentProfile.socials || {};
 
-  currentProfile.personal.full_name = document.getElementById("profFullName").value;
-  currentProfile.personal.email = document.getElementById("profEmail").value;
-  currentProfile.personal.phone = document.getElementById("profPhone").value;
+  const fn = document.getElementById("profFirstName").value.trim();
+  const mn = document.getElementById("profMiddleName").value.trim();
+  const ln = document.getElementById("profLastName").value.trim();
+
+  currentProfile.personal.first_name = fn;
+  currentProfile.personal.middle_name = mn;
+  currentProfile.personal.last_name = ln;
+  currentProfile.personal.full_name = [fn, mn, ln].filter(Boolean).join(" ");
+
+  currentProfile.personal.email = document.getElementById("profEmail").value.trim();
+  currentProfile.personal.phone = document.getElementById("profPhone").value.trim();
   currentProfile.career_details.current_notice_period_days = parseInt(document.getElementById("profNotice").value) || 15;
   currentProfile.career_details.expected_ctc_inr = parseInt(document.getElementById("profExpectedCTC").value) || 1600000;
-  currentProfile.socials.linkedin = document.getElementById("profLinkedIn").value;
+  currentProfile.socials.linkedin = document.getElementById("profLinkedIn").value.trim();
+  currentProfile.socials.github = document.getElementById("profGitHub").value.trim();
 
   try {
     const res = await fetch(getApiUrl("/api/profile"), {
@@ -324,12 +366,16 @@ async function saveProfile() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(currentProfile)
     });
-    if (res.ok) alert("Profile saved successfully!");
+    if (res.ok) {
+      alert("✅ Dossier specs successfully saved to disk!");
+      updateFullNamePreview();
+    }
   } catch (err) {
-    alert("Failed saving profile: " + err.message);
+    alert("Save error: " + err.message);
   }
 }
 
+// Settings & Guardrails
 async function fetchSettings() {
   try {
     const res = await fetch(getApiUrl("/api/settings"));
@@ -355,8 +401,8 @@ async function saveSettings() {
   currentSettings.limits.pause_between_applications_min_sec = parseInt(document.getElementById("settMinDelay").value) || 14;
   currentSettings.limits.pause_between_applications_max_sec = parseInt(document.getElementById("settMaxDelay").value) || 32;
 
-  const comps = document.getElementById("settBlacklistCompanies").value.split(",").map(s => s.strip ? s.strip() : s.trim()).filter(Boolean);
-  const titles = document.getElementById("settBlacklistTitles").value.split(",").map(s => s.strip ? s.strip() : s.trim()).filter(Boolean);
+  const comps = document.getElementById("settBlacklistCompanies").value.split(",").map(s => s.trim()).filter(Boolean);
+  const titles = document.getElementById("settBlacklistTitles").value.split(",").map(s => s.trim()).filter(Boolean);
 
   currentSettings.filters.blacklist_companies = comps;
   currentSettings.filters.blacklist_title_keywords = titles;
@@ -367,13 +413,13 @@ async function saveSettings() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(currentSettings)
     });
-    if (res.ok) alert("Settings saved successfully!");
+    if (res.ok) alert("✅ Guardrail parameters updated!");
   } catch (err) {
-    alert("Failed saving settings: " + err.message);
+    alert("Save error: " + err.message);
   }
 }
 
-// Backend Modal Configuration
+// Hardware Link Modal
 function toggleBackendModal() {
   const modal = document.getElementById("backendModal");
   modal.classList.toggle("hidden");
@@ -385,7 +431,7 @@ function saveBackendUrl() {
   const url = document.getElementById("backendUrlInput").value.trim();
   if (url) {
     API_BASE = url;
-    localStorage.setItem("landoffer_backend_url", url);
+    localStorage.setItem("wrangler_backend_url", url);
     toggleBackendModal();
     fetchStatus();
     initWebSocket();
