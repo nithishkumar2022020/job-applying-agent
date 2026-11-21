@@ -1,10 +1,10 @@
-// LandOffer Stealth Agent - Web Dashboard Frontend Controller
+// Wrangler Stealth Agent - Web Dashboard Frontend Controller
 
-let API_BASE = localStorage.getItem("landoffer_backend_url") || window.location.origin;
+let API_BASE = localStorage.getItem("wrangler_backend_url") || localStorage.getItem("landoffer_backend_url") || window.location.origin;
 if (API_BASE.startsWith("http://127.0.0.1") || API_BASE.startsWith("http://localhost")) {
   // Good local address
 } else if (window.location.protocol === "file:" || window.location.hostname.includes("github.io") || window.location.hostname.includes("pages.dev")) {
-  API_BASE = localStorage.getItem("landoffer_backend_url") || "http://localhost:8000";
+  API_BASE = localStorage.getItem("wrangler_backend_url") || localStorage.getItem("landoffer_backend_url") || "http://localhost:8000";
 }
 
 let ws = null;

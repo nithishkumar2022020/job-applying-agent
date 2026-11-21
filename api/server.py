@@ -30,7 +30,7 @@ from adapters.greenhouse_adapter import GreenhouseAdapter
 from adapters.lever_adapter import LeverAdapter
 from adapters.ashby_adapter import AshbyAdapter
 
-app = FastAPI(title="Stealth Job Applying Agent GUI API", version="1.0.0")
+app = FastAPI(title="Wrangler Stealth Job Applying Agent API", version="1.0.0")
 
 # Enable CORS for local & cloud hosting (GitHub Pages / Cloudflare Pages)
 app.add_middleware(

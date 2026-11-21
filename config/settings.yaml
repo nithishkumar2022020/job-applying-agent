@@ -1,5 +1,5 @@
 app:
-  name: "Stealth Job Applying Agent"
+  name: "Wrangler"
   version: "1.0.0"
   # Modes: 'copilot' (LandOffer 1-Click Autofill & Review) or 'autonomous' (Overnight Auto-Submit)
   mode: "copilot"

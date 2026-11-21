@@ -1,6 +1,6 @@
-# 🎯 Stealth Job Applying Agent (LandOffer & Auto-Apply Architecture)
+# 🤠 Wrangler - Stealth AI Job Applying Agent
 
-An undetectable, high-availability, zero-cost job application assistant designed for software engineers. Modeled after **LandOffer.ai** and the stealth browser automation framework.
+**Wrangler** is an undetectable, high-availability, zero-cost job application assistant designed for software engineers. Modeled after **LandOffer.ai** and the stealth browser automation framework.
 
 ---
 

@@ -11,7 +11,7 @@ class Dashboard:
     def print_banner():
         banner = """
 ================================================================================
-   🎯 STEALTH JOB APPLYING AGENT (LandOffer & Auto-Apply Architecture)
+   🎯 WRANGLER // STEALTH JOB APPLYING AGENT (LandOffer & Auto-Apply Architecture)
    Modeled after undetectable Chrome CDP profile automation + Dual Free AI
 ================================================================================
 """
