@@ -1,10 +1,9 @@
 // Wrangler Stealth Agent - Web Dashboard Frontend Controller
 
-let API_BASE = localStorage.getItem("wrangler_backend_url") || localStorage.getItem("landoffer_backend_url") || window.location.origin;
-if (API_BASE.startsWith("http://127.0.0.1") || API_BASE.startsWith("http://localhost")) {
-  // Good local address
-} else if (window.location.protocol === "file:" || window.location.hostname.includes("github.io") || window.location.hostname.includes("pages.dev")) {
-  API_BASE = localStorage.getItem("wrangler_backend_url") || localStorage.getItem("landoffer_backend_url") || "http://localhost:8000";
+let API_BASE = localStorage.getItem("wrangler_backend_url");
+if (!API_BASE) {
+  const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  API_BASE = isLocal ? window.location.origin : "http://localhost:8000";
 }
 
 let ws = null;
@@ -260,6 +259,19 @@ async function handleResumeUpload(event) {
       method: "POST",
       body: formData
     });
+
+    if (!res.ok) {
+      let errorMsg = `Server error ${res.status}`;
+      try {
+        const errJson = await res.json();
+        errorMsg = errJson.message || errorMsg;
+      } catch {
+        const errText = await res.text();
+        if (errText) errorMsg = errText;
+      }
+      throw new Error(`${errorMsg}. Please ensure the local agent backend is running on ${API_BASE}`);
+    }
+
     const data = await res.json();
     if (data.status === "ok") {
       statusEl.textContent = "✨ Auto-synced from latest resume!";
