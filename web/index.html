@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WRANGLER // Neo-Retro Autonomous Job Agent</title>
+  <title>Wrangler — Job Application Assistant</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
   <script>
     tailwind.config = {
@@ -15,19 +15,16 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ['"Space Grotesk"', 'sans-serif'],
+            sans: ['"Inter"', 'system-ui', 'sans-serif'],
             mono: ['"JetBrains Mono"', 'monospace'],
           },
           colors: {
-            retro: {
-              bg: '#0a0c10',
-              panel: '#12151e',
-              border: '#2a3044',
-              accent: '#00ff88',
-              cyan: '#00e5ff',
-              amber: '#ffaa00',
-              pink: '#ff2a6d',
-              darkcard: '#0e1118'
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
             }
           }
         }
@@ -35,404 +32,342 @@
     }
   </script>
   <style>
-    /* Neo-Retro Blueprint Grid Background */
     body {
-      background-color: #08090d;
-      background-image: 
-        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-      background-size: 32px 32px;
-      color: #e2e8f0;
-    }
-
-    /* Chunky Neo-Brutalist Hardware Styling */
-    .retro-box {
-      background: #11141c;
-      border: 2px solid #2a3044;
-      box-shadow: 4px 4px 0px #000000;
-    }
-    .retro-box-accent {
-      background: #11141c;
-      border: 2px solid #00ff88;
-      box-shadow: 4px 4px 0px rgba(0, 255, 136, 0.35);
-    }
-    .retro-btn {
-      border: 2px solid #000000;
-      box-shadow: 3px 3px 0px #000000;
-      transition: all 0.08s ease-in-out;
-    }
-    .retro-btn:active {
-      transform: translate(2px, 2px);
-      box-shadow: 1px 1px 0px #000000;
-    }
-    .retro-input {
-      background: #080a0f;
-      border: 2px solid #262c3e;
+      background-color: #0b0f19;
       color: #f1f5f9;
-      font-family: 'JetBrains Mono', monospace;
-      transition: border-color 0.15s ease;
     }
-    .retro-input:focus {
+    .card-panel {
+      background: #111827;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+    }
+    .input-field {
+      background: #0d121f;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      color: #f8fafc;
+      transition: all 0.15s ease;
+    }
+    .input-field:focus {
       outline: none;
-      border-color: #00ff88;
-      box-shadow: 2px 2px 0px #00ff88;
+      border-color: #10b981;
+      box-shadow: 0 0 0 1px #10b981;
     }
-
-    /* CRT Scanline Overlay for Terminal */
-    .crt-screen {
-      background: #06080b;
-      position: relative;
-      border: 2px solid #1a202c;
-    }
-    .crt-screen::before {
-      content: " ";
-      display: block;
-      position: absolute;
-      top: 0; left: 0; bottom: 0; right: 0;
-      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
-      background-size: 100% 4px;
-      z-index: 10;
-      pointer-events: none;
-    }
-    .terminal-scroll::-webkit-scrollbar { width: 8px; }
-    .terminal-scroll::-webkit-scrollbar-track { background: #06080b; }
-    .terminal-scroll::-webkit-scrollbar-thumb { background: #262d40; border-radius: 0px; }
-
-    /* Blinking Terminal Cursor */
-    @keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
-    .cursor-blink { animation: blink 1s infinite; }
+    .terminal-scroll::-webkit-scrollbar { width: 6px; }
+    .terminal-scroll::-webkit-scrollbar-track { background: #090d16; }
+    .terminal-scroll::-webkit-scrollbar-thumb { background: #1f293d; border-radius: 3px; }
   </style>
 </head>
-<body class="font-sans min-h-screen flex flex-col antialiased selection:bg-[#00ff88] selection:text-black">
+<body class="font-sans min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
 
-  <!-- Top Marquee Ticker -->
-  <div class="bg-[#00ff88] text-black font-mono text-[11px] font-bold py-1 px-4 border-b-2 border-black flex items-center justify-between tracking-wider overflow-hidden uppercase select-none">
-    <div class="flex items-center gap-4 whitespace-nowrap">
-      <span>⚡ WRANGLER // STEALTH AUTO-APPLY ENGINE</span>
-      <span>•</span>
-      <span>GENUINE CHROME CDP ATTACHMENT</span>
-      <span>•</span>
-      <span>DUAL ZERO-COST AI: GEMINI 2.0 FLASH + GROQ 70B</span>
-      <span>•</span>
-      <span>HUMAN GAUSSIAN KEYSTROKES</span>
-      <span>•</span>
-      <span>0-TOKEN ATS CACHE ACTIVE</span>
-    </div>
-    <div class="hidden md:flex items-center gap-2 font-mono text-[10px]">
-      <span class="w-2 h-2 rounded-full bg-black animate-ping"></span>
-      <span>SYSTEM READY</span>
-    </div>
-  </div>
-
-  <!-- Industrial Header Navbar -->
-  <header class="bg-[#0c0e15] border-b-2 border-[#262c3e] sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 py-3 flex items-center justify-between">
+  <!-- Clean Top Navigation -->
+  <header class="border-b border-white/5 bg-[#0b0f19]/90 sticky top-0 z-50 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       
-      <!-- Logo Branding -->
+      <!-- Logo & App Name -->
       <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 bg-[#00ff88] border-2 border-black flex items-center justify-center font-extrabold text-black text-xl shadow-[3px_3px_0px_#000000]">
-          W
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm">
+          <i data-lucide="crosshair" class="w-4 h-4"></i>
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="font-black text-white text-xl tracking-tighter uppercase">WRANGLER</h1>
-            <span class="font-mono text-[10px] px-2 py-0.5 bg-[#00e5ff] text-black font-extrabold uppercase border border-black shadow-[2px_2px_0px_#000]">v1.0.4</span>
+            <span class="font-semibold text-white text-base tracking-tight">Wrangler</span>
+            <span class="text-[11px] px-2 py-0.5 rounded-full bg-white/5 text-slate-400 font-medium">Assistant</span>
           </div>
-          <p class="text-[11px] text-slate-400 font-mono tracking-tight">AUTONOMOUS STEALTH JOB HUNTER &bull; NEO-RETRO OS</p>
+          <p class="text-xs text-slate-400">Automated job application co-pilot</p>
         </div>
       </div>
 
-      <!-- Hardware Status Badges -->
-      <div class="flex items-center space-x-3">
-        <!-- Chrome CDP Diode -->
-        <div id="chromeBadge" class="flex items-center gap-2 px-3 py-1.5 bg-[#171a24] border-2 border-[#2a3044] text-xs font-mono font-bold text-rose-400 shadow-[2px_2px_0px_#000]">
-          <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
-          <span>CDP:9222 [OFFLINE]</span>
+      <!-- Status Indicators -->
+      <div class="flex items-center space-x-3 text-xs">
+        <!-- Chrome Connection Status -->
+        <div id="chromeBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 text-slate-400 border border-white/5 font-medium">
+          <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+          <span>Chrome: Disconnected</span>
         </div>
 
-        <!-- Agent Status Diode -->
-        <div id="agentBadge" class="flex items-center gap-2 px-3 py-1.5 bg-[#171a24] border-2 border-[#2a3044] text-xs font-mono font-bold text-slate-400 shadow-[2px_2px_0px_#000]">
-          <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
-          <span>CORE: IDLE</span>
+        <!-- Agent Activity Status -->
+        <div id="agentBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 text-slate-400 border border-white/5 font-medium">
+          <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+          <span>Agent: Idle</span>
         </div>
 
-        <!-- Port Config Button -->
-        <button onclick="toggleBackendModal()" title="Hardware Link Settings" class="p-2 bg-[#1a1f2c] hover:bg-[#252c3f] border-2 border-black text-slate-200 retro-btn font-mono text-xs">
-          <i data-lucide="sliders" class="w-4 h-4"></i>
+        <!-- Settings Button -->
+        <button onclick="toggleBackendModal()" title="Backend Settings" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors border border-white/5">
+          <i data-lucide="settings" class="w-4 h-4"></i>
         </button>
       </div>
 
     </div>
   </header>
 
-  <!-- Main Container -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+  <!-- Main Content Wrapper -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
-    <!-- KPI Metric Meters (Analog Gauges) -->
+    <!-- KPI Summary Row -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
       
-      <!-- Gauge 1: Daily Quota -->
-      <div class="retro-box p-4">
-        <div class="flex items-center justify-between text-xs font-mono font-bold text-slate-400 uppercase">
-          <span>// DAILY_CAP_METER</span>
-          <span class="text-[#00ff88]">SYS:OK</span>
-        </div>
+      <!-- Today's Quota Card -->
+      <div class="card-panel p-5">
+        <div class="text-xs font-medium text-slate-400">Today's Applications</div>
         <div class="mt-2 flex items-baseline gap-2">
-          <span id="statTodayCount" class="text-3xl font-black text-white font-mono">0</span>
-          <span id="statMaxDaily" class="text-xs text-slate-500 font-mono">/ 35 TARGET</span>
+          <span id="statTodayCount" class="text-2xl font-bold text-white font-mono">0</span>
+          <span id="statMaxDaily" class="text-xs text-slate-500">/ 35 limit</span>
         </div>
-        <!-- Segmented VU Meter -->
-        <div class="w-full bg-[#08090d] h-3 border border-[#2a3044] p-0.5 mt-3 flex gap-0.5">
-          <div id="vu1" class="h-full flex-1 bg-[#1a202c]"></div>
-          <div id="vu2" class="h-full flex-1 bg-[#1a202c]"></div>
-          <div id="vu3" class="h-full flex-1 bg-[#1a202c]"></div>
-          <div id="vu4" class="h-full flex-1 bg-[#1a202c]"></div>
-          <div id="vu5" class="h-full flex-1 bg-[#1a202c]"></div>
-          <div id="vu6" class="h-full flex-1 bg-[#1a202c]"></div>
-          <div id="vu7" class="h-full flex-1 bg-[#1a202c]"></div>
-          <div id="vu8" class="h-full flex-1 bg-[#1a202c]"></div>
-          <div id="vu9" class="h-full flex-1 bg-[#1a202c]"></div>
-          <div id="vu10" class="h-full flex-1 bg-[#1a202c]"></div>
+        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+          <div id="statProgressBar" class="bg-emerald-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
         </div>
       </div>
 
-      <!-- Gauge 2: Submissions Log -->
-      <div class="retro-box p-4">
-        <div class="flex items-center justify-between text-xs font-mono font-bold text-slate-400 uppercase">
-          <span>// APPLIED_HIST</span>
-          <span class="text-[#00e5ff]">SQLITE</span>
-        </div>
+      <!-- Total Logged Applications -->
+      <div class="card-panel p-5">
+        <div class="text-xs font-medium text-slate-400">Total Processed</div>
         <div class="mt-2 flex items-baseline gap-2">
-          <span id="statTotalCount" class="text-3xl font-black text-[#00e5ff] font-mono">0</span>
-          <span class="text-xs text-slate-400 font-mono">JOBS</span>
+          <span id="statTotalCount" class="text-2xl font-bold text-white font-mono">0</span>
+          <span class="text-xs text-emerald-400">all-time</span>
         </div>
-        <div class="text-[11px] text-slate-400 mt-3 font-mono">100% Humanized Cadence</div>
+        <div class="text-xs text-slate-500 mt-2.5">Tracked in local database</div>
       </div>
 
-      <!-- Gauge 3: Zero-Cost Cache -->
-      <div class="retro-box p-4">
-        <div class="flex items-center justify-between text-xs font-mono font-bold text-slate-400 uppercase">
-          <span>// ZERO_TOKEN_CACHE</span>
-          <span class="text-[#00ff88]">FREE_TIER</span>
-        </div>
+      <!-- Answer Cache -->
+      <div class="card-panel p-5">
+        <div class="text-xs font-medium text-slate-400">Q&A Cache (0-Token)</div>
         <div class="mt-2 flex items-baseline gap-2">
-          <span id="statCacheCount" class="text-3xl font-black text-[#00ff88] font-mono">0</span>
-          <span class="text-xs text-slate-400 font-mono">ANSWERS</span>
+          <span id="statCacheCount" class="text-2xl font-bold text-white font-mono">0</span>
+          <span class="text-xs text-slate-400">answers</span>
         </div>
-        <div class="text-[11px] text-slate-400 mt-3 font-mono">0 Token Waste / Repeat Hit</div>
+        <div class="text-xs text-slate-500 mt-2.5">Reused across duplicate questions</div>
       </div>
 
-      <!-- Gauge 4: Dual AI Router -->
-      <div class="retro-box p-4">
-        <div class="flex items-center justify-between text-xs font-mono font-bold text-slate-400 uppercase">
-          <span>// NEURAL_FAILOVER</span>
-          <span class="text-amber-400">STANDBY</span>
-        </div>
+      <!-- AI Provider -->
+      <div class="card-panel p-5">
+        <div class="text-xs font-medium text-slate-400">AI Intelligence</div>
         <div class="mt-2 flex items-center gap-2">
-          <span class="w-2.5 h-2.5 bg-[#00ff88] rounded-full"></span>
-          <span class="text-base font-bold text-white font-mono">GEMINI 2.0 FLASH</span>
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span class="text-sm font-semibold text-white">Gemini 2.0 Flash</span>
         </div>
-        <div class="text-[11px] text-slate-400 mt-3 font-mono">&rarr; GROQ LLAMA-3.3 70B</div>
+        <div class="text-xs text-slate-500 mt-2.5">Groq Llama 3.3 failover enabled</div>
       </div>
 
     </div>
 
-    <!-- Command Deck (Action Hardware Panel) -->
-    <div class="retro-box-accent p-6 flex flex-col md:flex-row items-center justify-between gap-5">
+    <!-- Action Bar / Run Control -->
+    <div class="card-panel p-6 flex flex-col md:flex-row items-center justify-between gap-4 border-emerald-500/20 bg-gradient-to-r from-emerald-950/10 to-slate-900/40">
       <div>
-        <div class="flex items-center gap-2 font-mono text-xs font-bold text-[#00ff88] uppercase tracking-wider">
-          <span class="w-2 h-2 bg-[#00ff88]"></span>
-          <span>COMMAND_DECK // CH_01</span>
-        </div>
-        <h2 class="text-xl font-black text-white mt-1 uppercase tracking-tight">TACTICAL LAUNCH CONTROLLER</h2>
-        <p class="text-xs text-slate-400 font-mono mt-0.5">Control active Chrome forms via Wrangler Co-Pilot or run unattended overnight batch loop.</p>
+        <h2 class="text-base font-semibold text-white flex items-center gap-2">
+          <span>Application Controls</span>
+          <span id="activeActionLabel" class="text-xs font-normal px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400">Ready</span>
+        </h2>
+        <p class="text-xs text-slate-400 mt-0.5">Run Co-Pilot to assist on open job pages, or launch an autonomous batch search.</p>
       </div>
 
       <div class="flex items-center gap-3 w-full md:w-auto">
         <!-- Start Co-Pilot Button -->
-        <button id="btnStartCopilot" onclick="startCopilot()" class="flex-1 md:flex-none px-5 py-3 bg-[#00ff88] hover:bg-[#05df72] text-black font-black text-xs font-mono uppercase retro-btn flex items-center justify-center gap-2">
-          <i data-lucide="crosshair" class="w-4 h-4 stroke-[3]"></i>
-          <span>RUN CO-PILOT</span>
+        <button id="btnStartCopilot" onclick="startCopilot()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition-all shadow-sm">
+          <i data-lucide="play" class="w-3.5 h-3.5 fill-white"></i>
+          <span>Start Co-Pilot</span>
         </button>
 
-        <!-- Batch Apply Button -->
-        <button id="btnStartBatch" onclick="openBatchModal()" class="flex-1 md:flex-none px-5 py-3 bg-[#00e5ff] hover:bg-[#00c8e0] text-black font-black text-xs font-mono uppercase retro-btn flex items-center justify-center gap-2">
-          <i data-lucide="layers" class="w-4 h-4 stroke-[3]"></i>
-          <span>BATCH HUNT</span>
+        <!-- Start Batch Button -->
+        <button id="btnStartBatch" onclick="openBatchModal()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs border border-white/10 transition-all">
+          <i data-lucide="search" class="w-3.5 h-3.5"></i>
+          <span>Batch Search</span>
         </button>
 
-        <!-- Abort Stop Button -->
-        <button id="btnStop" onclick="stopAgent()" disabled class="px-5 py-3 bg-[#ff2a6d] hover:bg-[#e01e5a] text-white font-black text-xs font-mono uppercase retro-btn flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
-          <i data-lucide="square" class="w-4 h-4 fill-white"></i>
-          <span>ABORT</span>
+        <!-- Stop Button -->
+        <button id="btnStop" onclick="stopAgent()" disabled class="flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-medium text-xs border border-rose-500/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+          <i data-lucide="square" class="w-3.5 h-3.5"></i>
+          <span>Stop</span>
         </button>
       </div>
     </div>
 
-    <!-- Neo-Retro Hardware Preset Selector Tabs -->
-    <div class="flex flex-wrap gap-2 border-b-2 border-[#262c3e] pb-3">
-      <button onclick="switchTab('feed')" id="tabBtnFeed" class="tab-btn px-4 py-2 bg-[#00ff88] text-black font-mono font-bold text-xs border-2 border-black uppercase retro-btn flex items-center gap-2">
-        <i data-lucide="terminal" class="w-3.5 h-3.5 stroke-[2.5]"></i>
-        <span>[01 // CRT_TELEMETRY]</span>
+    <!-- Navigation Tabs -->
+    <div class="border-b border-white/10 flex space-x-6 text-sm">
+      <button onclick="switchTab('tracker')" id="tabBtnTracker" class="tab-btn pb-3 font-medium text-emerald-400 border-b-2 border-emerald-400 flex items-center gap-2 transition-colors">
+        <i data-lucide="layout-list" class="w-4 h-4"></i>
+        <span>Applications Tracker</span>
       </button>
 
-      <button onclick="switchTab('profile')" id="tabBtnProfile" class="tab-btn px-4 py-2 bg-[#12151e] text-slate-300 hover:text-white font-mono font-bold text-xs border-2 border-[#262c3e] uppercase retro-btn flex items-center gap-2">
-        <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
-        <span>[02 // DOSSIER & RESUME]</span>
+      <button onclick="switchTab('feed')" id="tabBtnFeed" class="tab-btn pb-3 font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2 transition-colors">
+        <i data-lucide="terminal" class="w-4 h-4"></i>
+        <span>Live Agent Log</span>
       </button>
 
-      <button onclick="switchTab('settings')" id="tabBtnSettings" class="tab-btn px-4 py-2 bg-[#12151e] text-slate-300 hover:text-white font-mono font-bold text-xs border-2 border-[#262c3e] uppercase retro-btn flex items-center gap-2">
-        <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
-        <span>[03 // GUARDRAILS]</span>
+      <button onclick="switchTab('profile')" id="tabBtnProfile" class="tab-btn pb-3 font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2 transition-colors">
+        <i data-lucide="user" class="w-4 h-4"></i>
+        <span>Candidate Profile & Resume</span>
       </button>
 
-      <button onclick="switchTab('deploy')" id="tabBtnDeploy" class="tab-btn px-4 py-2 bg-[#12151e] text-slate-300 hover:text-white font-mono font-bold text-xs border-2 border-[#262c3e] uppercase retro-btn flex items-center gap-2">
-        <i data-lucide="cloud" class="w-3.5 h-3.5"></i>
-        <span>[04 // CLOUD_SYNC]</span>
+      <button onclick="switchTab('settings')" id="tabBtnSettings" class="tab-btn pb-3 font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2 transition-colors">
+        <i data-lucide="shield" class="w-4 h-4"></i>
+        <span>Safety & Filters</span>
       </button>
     </div>
 
-    <!-- TAB 1: CRT TELEMETRY & APPLICATION LOG -->
-    <div id="tabFeed" class="tab-content space-y-6">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        <!-- CRT Console Monitor -->
-        <div class="retro-box overflow-hidden flex flex-col h-[480px]">
-          <div class="bg-[#171b26] px-4 py-2.5 border-b-2 border-[#262c3e] flex items-center justify-between font-mono text-xs">
-            <div class="flex items-center gap-2">
-              <span class="w-2.5 h-2.5 bg-[#00ff88]"></span>
-              <span class="font-bold text-white uppercase tracking-wider">CRT_MONITOR // STDOUT</span>
+    <!-- TAB 1: APPLICATIONS TRACKER (Primary Hero Tab) -->
+    <div id="tabTracker" class="tab-content space-y-4">
+      <div class="card-panel overflow-hidden">
+        
+        <!-- Filter and Search Header -->
+        <div class="p-4 border-b border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900/40">
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <div class="relative flex-1 sm:w-72">
+              <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-500"></i>
+              <input type="text" id="trackerSearch" oninput="filterApplications()" placeholder="Search company or title..." class="input-field w-full pl-9 pr-3 py-1.5 text-xs">
             </div>
-            <button onclick="clearTerminal()" class="text-slate-400 hover:text-[#00ff88] text-[11px] uppercase">[CLEAR_BUF]</button>
+            <button onclick="fetchApplications()" title="Refresh applications" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
+              <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>
+            </button>
           </div>
-          <div id="terminalBody" class="crt-screen flex-1 p-4 font-mono text-xs overflow-y-auto terminal-scroll space-y-1.5 text-slate-300">
-            <div class="text-[#00ff88] font-bold">// WRANGLER TELEMETRY INITIALIZED...</div>
-            <div class="text-slate-500">// READY FOR FORM INJECTION EVENTS</div>
+
+          <!-- Status Filter Tabs -->
+          <div class="flex items-center gap-1.5 bg-slate-950/60 p-1 rounded-lg border border-white/5 text-xs w-full sm:w-auto">
+            <button onclick="setStatusFilter('ALL')" id="filterAll" class="filter-pill px-3 py-1 rounded-md bg-slate-800 text-white font-medium">All</button>
+            <button onclick="setStatusFilter('PENDING')" id="filterPending" class="filter-pill px-3 py-1 rounded-md text-slate-400 hover:text-white">Needs Review</button>
+            <button onclick="setStatusFilter('SUBMITTED')" id="filterSubmitted" class="filter-pill px-3 py-1 rounded-md text-slate-400 hover:text-white">Submitted</button>
           </div>
         </div>
 
-        <!-- Real-Time Applications Feed -->
-        <div class="retro-box overflow-hidden flex flex-col h-[480px]">
-          <div class="bg-[#171b26] px-4 py-2.5 border-b-2 border-[#262c3e] flex items-center justify-between font-mono text-xs">
-            <div class="flex items-center gap-2">
-              <span class="w-2.5 h-2.5 bg-[#00e5ff]"></span>
-              <span class="font-bold text-white uppercase tracking-wider">PROCESSED_QUEUE</span>
-            </div>
-            <button onclick="fetchApplications()" class="text-[#00e5ff] hover:underline text-[11px] uppercase">[POLL_DB]</button>
-          </div>
-          <div class="flex-1 overflow-y-auto terminal-scroll divide-y-2 divide-[#1b2030] p-2" id="applicationsList">
-            <div class="p-8 text-center text-slate-500 text-xs font-mono">// NO JOBS RECORDED. START CO-PILOT OR BATCH HUNT.</div>
-          </div>
+        <!-- Table View -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/60 text-slate-400 border-b border-white/5 font-medium">
+              <tr>
+                <th class="py-3 px-4">Company & Job Title</th>
+                <th class="py-3 px-4">Platform</th>
+                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4">Applied Date</th>
+                <th class="py-3 px-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="applicationsTableBody" class="divide-y divide-white/5 text-slate-300">
+              <tr>
+                <td colspan="5" class="py-8 text-center text-slate-500 text-xs">
+                  No applications recorded yet. Start Co-Pilot or run a Batch Search to begin applying.
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
       </div>
     </div>
 
-    <!-- TAB 2: DOSSIER & RESUME (First / Middle / Last Name Overhaul) -->
+    <!-- TAB 2: LIVE AGENT LOG -->
+    <div id="tabFeed" class="tab-content hidden space-y-4">
+      <div class="card-panel overflow-hidden flex flex-col h-[520px]">
+        <div class="px-4 py-3 bg-slate-900/60 border-b border-white/5 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span class="text-xs font-semibold text-slate-300">Live Agent Activity Log</span>
+          </div>
+          <button onclick="clearTerminal()" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">Clear</button>
+        </div>
+        <div id="terminalBody" class="flex-1 p-4 font-mono text-xs overflow-y-auto terminal-scroll bg-[#080c14] space-y-1.5 text-slate-300">
+          <div class="text-slate-500">// Connected to Wrangler Agent log stream...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: CANDIDATE PROFILE & RESUME -->
     <div id="tabProfile" class="tab-content hidden space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <!-- Retro Floppy / PDF Resume Module Dropzone -->
-        <div class="retro-box p-6 flex flex-col items-center justify-center text-center">
-          <div class="w-16 h-16 bg-[#08090d] border-2 border-[#00ff88] text-[#00ff88] flex items-center justify-center mb-4 shadow-[3px_3px_0px_#000]">
-            <i data-lucide="file-code-2" class="w-8 h-8"></i>
+        <!-- Resume Upload Card -->
+        <div class="card-panel p-6 flex flex-col items-center justify-center text-center">
+          <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3">
+            <i data-lucide="file-text" class="w-6 h-6"></i>
           </div>
-          <div class="font-mono text-xs font-bold text-[#00ff88] uppercase">// RESUME_DRIVE</div>
-          <h3 class="text-lg font-black text-white mt-1 uppercase">INSERT RESUME PDF</h3>
-          <p class="text-xs text-slate-400 font-mono mt-1 max-w-xs">
-            Drop updated PDF here. Multimodal AI automatically parses your details into the dossier below.
+          <h3 class="text-sm font-semibold text-white">Resume Document</h3>
+          <p class="text-xs text-slate-400 mt-1 max-w-xs">
+            Upload your updated PDF resume. AI will automatically extract details and update the fields on the right.
           </p>
 
           <input type="file" id="resumeFileInput" accept=".pdf" class="hidden" onchange="handleResumeUpload(event)">
-          <button onclick="document.getElementById('resumeFileInput').click()" class="mt-5 px-5 py-2.5 bg-[#171b26] hover:bg-[#222838] border-2 border-black text-[#00ff88] font-mono font-bold text-xs uppercase retro-btn">
-            [ LOAD .PDF FILE ]
+          <button onclick="document.getElementById('resumeFileInput').click()" class="mt-4 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs border border-white/10 transition-colors">
+            Upload New PDF
           </button>
-          <div id="uploadStatusText" class="text-xs text-[#00ff88] mt-3 font-mono font-bold"></div>
+          <div id="uploadStatusText" class="text-xs text-emerald-400 mt-3 font-medium"></div>
         </div>
 
-        <!-- Candidate Identity Dossier Form -->
-        <div class="retro-box p-6 lg:col-span-2 space-y-5">
-          <div class="flex items-center justify-between border-b-2 border-[#262c3e] pb-3">
+        <!-- Candidate Form with First, Middle, and Last Name -->
+        <div class="card-panel p-6 lg:col-span-2 space-y-5">
+          <div class="flex items-center justify-between border-b border-white/5 pb-3">
             <div>
-              <div class="font-mono text-xs text-[#00ff88] font-bold uppercase">// CANDIDATE_DOSSIER</div>
-              <h3 class="text-lg font-black text-white uppercase">PERSONAL & CAREER SPECS</h3>
+              <h3 class="text-sm font-semibold text-white">Candidate Details</h3>
+              <p class="text-xs text-slate-400">Used by Wrangler to autofill application forms</p>
             </div>
-            <div id="fullNamePreviewBadge" class="hidden md:block font-mono text-xs px-2.5 py-1 bg-[#171b26] border border-[#00ff88] text-[#00ff88]">
-              ID: Reddyvari Nithish Kumar Reddy
-            </div>
-          </div>
-
-          <!-- Name Tri-Fields (First, Middle, Last) Requested by User -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">
-                FIRST NAME <span class="text-rose-500">*</span>
-              </label>
-              <input type="text" id="profFirstName" placeholder="e.g. Nithish" class="retro-input w-full px-3 py-2 text-xs font-bold">
-            </div>
-
-            <div>
-              <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">
-                MIDDLE NAME
-              </label>
-              <input type="text" id="profMiddleName" placeholder="e.g. Kumar" class="retro-input w-full px-3 py-2 text-xs font-bold">
-            </div>
-
-            <div>
-              <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">
-                LAST NAME <span class="text-rose-500">*</span>
-              </label>
-              <input type="text" id="profLastName" placeholder="e.g. Reddy" class="retro-input w-full px-3 py-2 text-xs font-bold">
+            <div id="fullNamePreviewBadge" class="hidden sm:block text-xs px-2.5 py-1 rounded bg-slate-800/80 text-emerald-400 border border-emerald-500/20 font-mono">
+              Reddyvari Nithish Kumar Reddy
             </div>
           </div>
 
-          <!-- Contact & Telemetry -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <!-- Name Tri-Fields (First, Middle, Last) -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">EMAIL ADDRESS</label>
-              <input type="email" id="profEmail" class="retro-input w-full px-3 py-2 text-xs font-bold">
+              <label class="block text-xs font-medium text-slate-400 mb-1">First Name <span class="text-rose-400">*</span></label>
+              <input type="text" id="profFirstName" placeholder="e.g. Nithish" class="input-field w-full px-3 py-2 text-xs">
             </div>
 
             <div>
-              <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">PHONE NUMBER</label>
-              <input type="text" id="profPhone" class="retro-input w-full px-3 py-2 text-xs font-bold">
+              <label class="block text-xs font-medium text-slate-400 mb-1">Middle Name</label>
+              <input type="text" id="profMiddleName" placeholder="e.g. Kumar" class="input-field w-full px-3 py-2 text-xs">
             </div>
 
             <div>
-              <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">CITY / REGION</label>
-              <input type="text" id="profLocation" class="retro-input w-full px-3 py-2 text-xs font-bold">
+              <label class="block text-xs font-medium text-slate-400 mb-1">Last Name <span class="text-rose-400">*</span></label>
+              <input type="text" id="profLastName" placeholder="e.g. Reddy" class="input-field w-full px-3 py-2 text-xs">
             </div>
           </div>
 
-          <!-- Compensation & Notice Period -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <!-- Contact Details -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">NOTICE PERIOD (DAYS)</label>
-              <input type="number" id="profNotice" class="retro-input w-full px-3 py-2 text-xs font-bold">
+              <label class="block text-xs font-medium text-slate-400 mb-1">Email Address</label>
+              <input type="email" id="profEmail" class="input-field w-full px-3 py-2 text-xs">
             </div>
 
             <div>
-              <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">EXPECTED CTC (INR)</label>
-              <input type="number" id="profExpectedCTC" class="retro-input w-full px-3 py-2 text-xs font-bold">
+              <label class="block text-xs font-medium text-slate-400 mb-1">Phone Number</label>
+              <input type="text" id="profPhone" class="input-field w-full px-3 py-2 text-xs">
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Location (City, Country)</label>
+              <input type="text" id="profLocation" class="input-field w-full px-3 py-2 text-xs">
+            </div>
+          </div>
+
+          <!-- Compensation & Notice -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Notice Period (Days)</label>
+              <input type="number" id="profNotice" class="input-field w-full px-3 py-2 text-xs">
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Expected CTC (INR)</label>
+              <input type="number" id="profExpectedCTC" class="input-field w-full px-3 py-2 text-xs">
             </div>
           </div>
 
           <!-- URLs -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">LINKEDIN URL</label>
-              <input type="text" id="profLinkedIn" class="retro-input w-full px-3 py-2 text-xs font-bold">
+              <label class="block text-xs font-medium text-slate-400 mb-1">LinkedIn Profile</label>
+              <input type="text" id="profLinkedIn" class="input-field w-full px-3 py-2 text-xs">
             </div>
 
             <div>
-              <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">GITHUB URL</label>
-              <input type="text" id="profGitHub" class="retro-input w-full px-3 py-2 text-xs font-bold">
+              <label class="block text-xs font-medium text-slate-400 mb-1">GitHub Profile</label>
+              <input type="text" id="profGitHub" class="input-field w-full px-3 py-2 text-xs">
             </div>
           </div>
 
           <div class="pt-2 flex justify-end">
-            <button onclick="saveProfile()" class="px-6 py-2.5 bg-[#00ff88] hover:bg-[#05df72] text-black font-black font-mono text-xs uppercase retro-btn">
-              [ SAVE DOSSIER TO DISK ]
+            <button onclick="saveProfile()" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition-colors shadow-sm">
+              Save Profile Changes
             </button>
           </div>
         </div>
@@ -440,128 +375,102 @@
       </div>
     </div>
 
-    <!-- TAB 3: GUARDRAILS & LIMITS -->
+    <!-- TAB 4: SAFETY & FILTERS -->
     <div id="tabSettings" class="tab-content hidden space-y-6">
-      <div class="retro-box p-6 space-y-5">
-        <div class="border-b-2 border-[#262c3e] pb-3">
-          <div class="font-mono text-xs text-amber-400 font-bold uppercase">// OPERATIONAL_SAFETY</div>
-          <h3 class="text-lg font-black text-white uppercase">SAFETY GUARDS & PACING DELAYS</h3>
+      <div class="card-panel p-6 space-y-5">
+        <div class="border-b border-white/5 pb-3">
+          <h3 class="text-sm font-semibold text-white">Rate Limits & Application Safety</h3>
+          <p class="text-xs text-slate-400">Protects your accounts from being flagged by job platforms</p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">DAILY CAP (MAX SUBMISSIONS)</label>
-            <input type="number" id="settMaxDaily" class="retro-input w-full px-3 py-2 text-xs font-bold">
+            <label class="block text-xs font-medium text-slate-400 mb-1">Max Daily Applications</label>
+            <input type="number" id="settMaxDaily" class="input-field w-full px-3 py-2 text-xs">
           </div>
           <div>
-            <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">MIN PAUSE (SECONDS)</label>
-            <input type="number" id="settMinDelay" class="retro-input w-full px-3 py-2 text-xs font-bold">
+            <label class="block text-xs font-medium text-slate-400 mb-1">Min Delay Between Jobs (sec)</label>
+            <input type="number" id="settMinDelay" class="input-field w-full px-3 py-2 text-xs">
           </div>
           <div>
-            <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">MAX PAUSE (SECONDS)</label>
-            <input type="number" id="settMaxDelay" class="retro-input w-full px-3 py-2 text-xs font-bold">
+            <label class="block text-xs font-medium text-slate-400 mb-1">Max Delay Between Jobs (sec)</label>
+            <input type="number" id="settMaxDelay" class="input-field w-full px-3 py-2 text-xs">
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           <div>
-            <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">BLACKLIST RECRUITERS & COMPANIES (CSV)</label>
-            <textarea id="settBlacklistCompanies" rows="3" class="retro-input w-full p-3 text-xs font-bold font-mono"></textarea>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Blacklist Companies (comma-separated)</label>
+            <textarea id="settBlacklistCompanies" rows="3" class="input-field w-full p-2.5 text-xs"></textarea>
           </div>
           <div>
-            <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">BLACKLIST TITLE KEYWORDS (CSV)</label>
-            <textarea id="settBlacklistTitles" rows="3" class="retro-input w-full p-3 text-xs font-bold font-mono"></textarea>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Blacklist Title Keywords (comma-separated)</label>
+            <textarea id="settBlacklistTitles" rows="3" class="input-field w-full p-2.5 text-xs"></textarea>
           </div>
         </div>
 
         <div class="pt-2 flex justify-end">
-          <button onclick="saveSettings()" class="px-6 py-2.5 bg-amber-400 hover:bg-amber-300 text-black font-black font-mono text-xs uppercase retro-btn">
-            [ UPDATE GUARDRAIL PARAMS ]
+          <button onclick="saveSettings()" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition-colors shadow-sm">
+            Save Safety Guardrails
           </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB 4: CLOUD SYNC -->
-    <div id="tabDeploy" class="tab-content hidden space-y-6">
-      <div class="retro-box p-6 space-y-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-[#00e5ff] border-2 border-black flex items-center justify-center font-bold text-black shadow-[2px_2px_0px_#000]">
-            ☁️
-          </div>
-          <div>
-            <div class="font-mono text-xs text-[#00e5ff] font-bold uppercase">// EDGE_DISTRIBUTION</div>
-            <h3 class="text-lg font-black text-white uppercase">CLOUDFLARE WORKERS & GITHUB PAGES</h3>
-          </div>
-        </div>
-
-        <div class="bg-[#08090d] border-2 border-[#262c3e] p-4 font-mono text-xs space-y-2 text-slate-300">
-          <div class="text-[#00ff88] font-bold">// CLOUDFLARE WORKER PIPELINE STATUS:</div>
-          <div>Repo: <span class="text-white">nithishkumar2022020/job-applying-agent</span></div>
-          <div>Branch: <span class="text-[#00e5ff] font-bold">gemini</span></div>
-          <div>Static Root: <span class="text-white">./web</span></div>
-          <div>Deploy Engine: <span class="text-white">npx wrangler deploy (worker.js + [assets])</span></div>
         </div>
       </div>
     </div>
 
   </main>
 
-  <!-- Neo-Retro Batch Hunt Modal -->
-  <div id="batchModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-    <div class="retro-box p-6 max-w-md w-full space-y-4 border-2 border-[#00e5ff] shadow-[8px_8px_0px_#000]">
-      <div class="flex items-center justify-between border-b-2 border-[#262c3e] pb-2">
-        <h3 class="text-base font-black text-white uppercase font-mono flex items-center gap-2">
-          <span class="text-[#00e5ff]">&bull;</span>
-          <span>AUTONOMOUS BATCH HUNTER</span>
-        </h3>
-        <button onclick="closeBatchModal()" class="text-slate-400 hover:text-white font-mono text-sm font-bold">[X]</button>
+  <!-- Batch Search Modal -->
+  <div id="batchModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="card-panel p-6 max-w-md w-full space-y-4 shadow-2xl border border-white/10">
+      <div class="flex items-center justify-between border-b border-white/5 pb-3">
+        <h3 class="text-sm font-semibold text-white">Start Batch Search</h3>
+        <button onclick="closeBatchModal()" class="text-slate-400 hover:text-white">&times;</button>
       </div>
 
       <div>
-        <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">TARGET ROLE / KEYWORDS</label>
-        <input type="text" id="batchQuery" value="Flutter Developer" class="retro-input w-full px-3 py-2 text-xs font-bold">
+        <label class="block text-xs font-medium text-slate-400 mb-1">Target Role / Keywords</label>
+        <input type="text" id="batchQuery" value="Flutter Developer" class="input-field w-full px-3 py-2 text-xs">
       </div>
 
       <div>
-        <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">LOCATION / REGION</label>
-        <input type="text" id="batchLocation" value="Remote" class="retro-input w-full px-3 py-2 text-xs font-bold">
+        <label class="block text-xs font-medium text-slate-400 mb-1">Target Location</label>
+        <input type="text" id="batchLocation" value="Remote" class="input-field w-full px-3 py-2 text-xs">
       </div>
 
       <div>
-        <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">APPLICATION TARGET LIMIT</label>
-        <input type="number" id="batchLimit" value="20" class="retro-input w-full px-3 py-2 text-xs font-bold">
+        <label class="block text-xs font-medium text-slate-400 mb-1">Max Applications to Process</label>
+        <input type="number" id="batchLimit" value="20" class="input-field w-full px-3 py-2 text-xs">
       </div>
 
-      <div class="pt-2 flex justify-end gap-2 font-mono">
-        <button onclick="closeBatchModal()" class="px-4 py-2 bg-[#171b26] text-slate-300 text-xs font-bold retro-btn uppercase">CANCEL</button>
-        <button onclick="confirmStartBatch()" class="px-5 py-2 bg-[#00e5ff] text-black text-xs font-black retro-btn uppercase">[ LAUNCH MISSION ]</button>
+      <div class="pt-2 flex justify-end gap-2 text-xs">
+        <button onclick="closeBatchModal()" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">Cancel</button>
+        <button onclick="confirmStartBatch()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors">Launch Batch Search</button>
       </div>
     </div>
   </div>
 
-  <!-- Hardware Link Config Modal -->
-  <div id="backendModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-    <div class="retro-box p-6 max-w-md w-full space-y-4 border-2 border-[#00ff88] shadow-[8px_8px_0px_#000]">
-      <div class="flex items-center justify-between border-b-2 border-[#262c3e] pb-2">
-        <h3 class="text-base font-black text-white uppercase font-mono">// HARDWARE BRIDGE SETUP</h3>
-        <button onclick="toggleBackendModal()" class="text-slate-400 hover:text-white font-mono font-bold">[X]</button>
+  <!-- Backend Settings Modal -->
+  <div id="backendModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="card-panel p-6 max-w-md w-full space-y-4 shadow-2xl border border-white/10">
+      <div class="flex items-center justify-between border-b border-white/5 pb-3">
+        <h3 class="text-sm font-semibold text-white">Agent Connection Settings</h3>
+        <button onclick="toggleBackendModal()" class="text-slate-400 hover:text-white">&times;</button>
       </div>
-      <p class="text-xs text-slate-400 font-mono">
-        Specify your local Mac agent endpoint for Cloudflare edge routing:
+      <p class="text-xs text-slate-400">
+        When using Cloudflare Pages, connect this dashboard to your local running agent:
       </p>
       <div>
-        <label class="block font-mono text-xs font-bold text-slate-300 uppercase mb-1">BACKEND URL</label>
-        <input type="text" id="backendUrlInput" value="http://localhost:8000" class="retro-input w-full px-3 py-2 text-xs font-bold">
+        <label class="block text-xs font-medium text-slate-400 mb-1">Local Backend URL</label>
+        <input type="text" id="backendUrlInput" value="http://localhost:8000" class="input-field w-full px-3 py-2 text-xs font-mono">
       </div>
-      <div class="flex justify-end gap-2 font-mono">
-        <button onclick="toggleBackendModal()" class="px-4 py-2 bg-[#171b26] text-slate-300 text-xs font-bold retro-btn uppercase">CANCEL</button>
-        <button onclick="saveBackendUrl()" class="px-5 py-2 bg-[#00ff88] text-black text-xs font-black retro-btn uppercase">[ CONNECT BRIDGE ]</button>
+      <div class="flex justify-end gap-2 text-xs">
+        <button onclick="toggleBackendModal()" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-300">Close</button>
+        <button onclick="saveBackendUrl()" class="px-4 py-2 rounded-lg bg-emerald-600 text-white font-medium">Save & Reconnect</button>
       </div>
     </div>
   </div>
 
-  <script src="app.js?v=2.0.0"></script>
+  <script src="app.js?v=3.0.0"></script>
   <script>lucide.createIcons();</script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-// WRANGLER // Autonomous Stealth Job Hunter - Neo-Retro Dashboard Controller
+// Wrangler - Clean & Elegant Dashboard Controller
 
 let API_BASE = localStorage.getItem("wrangler_backend_url");
 if (!API_BASE) {
@@ -9,6 +9,8 @@ if (!API_BASE) {
 let ws = null;
 let currentProfile = {};
 let currentSettings = {};
+let allApplications = [];
+let currentStatusFilter = "ALL";
 
 document.addEventListener("DOMContentLoaded", () => {
   initWebSocket();
@@ -18,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
   fetchApplications();
   setInterval(fetchStatus, 3000);
 
-  // Auto-update full name preview when typing in First, Middle, or Last name
+  // Auto-sync full name preview when typing in First, Middle, or Last name
   ['profFirstName', 'profMiddleName', 'profLastName'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', updateFullNamePreview);
@@ -33,8 +35,8 @@ function getApiUrl(path) {
 function switchTab(tab) {
   document.querySelectorAll(".tab-content").forEach(el => el.classList.add("hidden"));
   document.querySelectorAll(".tab-btn").forEach(el => {
-    el.classList.remove("bg-[#00ff88]", "text-black", "border-black");
-    el.classList.add("bg-[#12151e]", "text-slate-300", "border-[#262c3e]");
+    el.classList.remove("text-emerald-400", "border-emerald-400");
+    el.classList.add("text-slate-400", "border-transparent");
   });
 
   const activeContent = document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
@@ -42,8 +44,8 @@ function switchTab(tab) {
 
   if (activeContent) activeContent.classList.remove("hidden");
   if (activeBtn) {
-    activeBtn.classList.remove("bg-[#12151e]", "text-slate-300", "border-[#262c3e]");
-    activeBtn.classList.add("bg-[#00ff88]", "text-black", "border-black");
+    activeBtn.classList.remove("text-slate-400", "border-transparent");
+    activeBtn.classList.add("text-emerald-400", "border-emerald-400");
   }
 }
 
@@ -74,13 +76,12 @@ function appendTerminalLog(message, level = "info") {
   const time = new Date().toLocaleTimeString();
 
   let color = "text-slate-300";
-  let prefix = "[SYS]";
-  if (level === "success") { color = "text-[#00ff88] font-bold"; prefix = "[OK ]"; }
-  if (level === "warning") { color = "text-amber-400 font-bold"; prefix = "[WRN]"; }
-  if (level === "error") { color = "text-[#ff2a6d] font-bold"; prefix = "[ERR]"; }
+  if (level === "success") color = "text-emerald-400";
+  if (level === "warning") color = "text-amber-400";
+  if (level === "error") color = "text-rose-400";
 
-  line.className = `flex items-start gap-2 ${color}`;
-  line.innerHTML = `<span class="text-slate-600 select-none">[${time}] ${prefix}</span> <span>${escapeHtml(message)}</span>`;
+  line.className = `flex items-start gap-2.5 ${color}`;
+  line.innerHTML = `<span class="text-slate-500 font-mono text-[11px] select-none">[${time}]</span> <span>${escapeHtml(message)}</span>`;
 
   body.appendChild(line);
   body.scrollTop = body.scrollHeight;
@@ -89,117 +90,196 @@ function appendTerminalLog(message, level = "info") {
 function clearTerminal() {
   const body = document.getElementById("terminalBody");
   if (body) {
-    body.innerHTML = `<div class="text-[#00ff88] font-bold">// TERMINAL BUFFER CLEARED</div>`;
+    body.innerHTML = `<div class="text-slate-500 font-mono">// Log buffer cleared.</div>`;
   }
 }
 
-// Status, VU Meter & KPIs
+// Status & KPIs
 async function fetchStatus() {
   try {
     const res = await fetch(getApiUrl("/api/status"));
     if (!res.ok) throw new Error("Status unreachable");
     const data = await res.json();
 
-    // Chrome CDP Hardware Badge
+    // Chrome Connection Badge
     const chromeBadge = document.getElementById("chromeBadge");
     if (data.chrome_connected) {
-      chromeBadge.className = "flex items-center gap-2 px-3 py-1.5 bg-[#171a24] border-2 border-[#00ff88] text-xs font-mono font-bold text-[#00ff88] shadow-[2px_2px_0px_#000]";
-      chromeBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-[#00ff88]"></span><span>CDP:9222 [ONLINE]</span>`;
+      chromeBadge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium";
+      chromeBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span>Chrome: Connected</span>`;
     } else {
-      chromeBadge.className = "flex items-center gap-2 px-3 py-1.5 bg-[#171a24] border-2 border-[#ff2a6d] text-xs font-mono font-bold text-[#ff2a6d] shadow-[2px_2px_0px_#000]";
-      chromeBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-[#ff2a6d] animate-pulse"></span><span>CDP:9222 [OFFLINE]</span>`;
+      chromeBadge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-medium";
+      chromeBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span><span>Chrome: Disconnected</span>`;
     }
 
-    // Agent Hardware Badge
+    // Agent Running Badge
     const agentBadge = document.getElementById("agentBadge");
     const btnStartCopilot = document.getElementById("btnStartCopilot");
     const btnStartBatch = document.getElementById("btnStartBatch");
     const btnStop = document.getElementById("btnStop");
+    const activeActionLabel = document.getElementById("activeActionLabel");
 
     if (data.is_running) {
-      agentBadge.className = "flex items-center gap-2 px-3 py-1.5 bg-[#171a24] border-2 border-[#00e5ff] text-xs font-mono font-bold text-[#00e5ff] shadow-[2px_2px_0px_#000]";
-      agentBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-[#00e5ff] animate-ping"></span><span>CORE: [${data.current_mode.toUpperCase()}]</span>`;
+      agentBadge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium";
+      agentBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span><span>Agent: ${data.current_mode.toUpperCase()}</span>`;
       btnStartCopilot.disabled = true;
       btnStartBatch.disabled = true;
       btnStop.disabled = false;
+      activeActionLabel.textContent = `Running: ${data.current_mode.toUpperCase()}`;
+      activeActionLabel.className = "text-xs font-normal px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300";
     } else {
-      agentBadge.className = "flex items-center gap-2 px-3 py-1.5 bg-[#171a24] border-2 border-[#2a3044] text-xs font-mono font-bold text-slate-400 shadow-[2px_2px_0px_#000]";
-      agentBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span><span>CORE: [IDLE]</span>`;
+      agentBadge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 text-slate-400 border border-white/5 font-medium";
+      agentBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-500"></span><span>Agent: Idle</span>`;
       btnStartCopilot.disabled = false;
       btnStartBatch.disabled = false;
       btnStop.disabled = true;
+      activeActionLabel.textContent = "Ready";
+      activeActionLabel.className = "text-xs font-normal px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400";
     }
 
-    // Numeric Counters
+    // Counters
     const stats = data.stats || {};
     const today = stats.today_count || 0;
     const maxDaily = data.limits?.max_daily_applications || 35;
     document.getElementById("statTodayCount").textContent = today;
-    document.getElementById("statMaxDaily").textContent = `/ ${maxDaily} TARGET`;
+    document.getElementById("statMaxDaily").textContent = `/ ${maxDaily} limit`;
     document.getElementById("statTotalCount").textContent = stats.total_processed || 0;
     document.getElementById("statCacheCount").textContent = stats.cached_qas || 0;
 
-    // Segmented VU Meter (10 discrete analog blocks)
-    const activeBlocks = Math.min(10, Math.ceil((today / maxDaily) * 10));
-    for (let i = 1; i <= 10; i++) {
-      const vu = document.getElementById(`vu${i}`);
-      if (!vu) continue;
-      if (i <= activeBlocks) {
-        vu.className = i > 8 ? "h-full flex-1 bg-[#ff2a6d]" : (i > 6 ? "h-full flex-1 bg-amber-400" : "h-full flex-1 bg-[#00ff88]");
-      } else {
-        vu.className = "h-full flex-1 bg-[#1a202c]";
-      }
-    }
+    const pct = Math.min(100, Math.round((today / maxDaily) * 100));
+    document.getElementById("statProgressBar").style.width = `${pct}%`;
 
   } catch (err) {
     const agentBadge = document.getElementById("agentBadge");
     if (agentBadge) {
-      agentBadge.className = "flex items-center gap-2 px-3 py-1.5 bg-[#171a24] border-2 border-[#ff2a6d] text-xs font-mono font-bold text-[#ff2a6d] shadow-[2px_2px_0px_#000]";
-      agentBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-[#ff2a6d]"></span><span>BACKEND: OFFLINE</span>`;
+      agentBadge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 text-rose-400 border border-rose-500/20 font-medium";
+      agentBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500"></span><span>Backend: Offline</span>`;
     }
   }
 }
 
-// Applications Feed with Industrial Badges
+// Applications Tracker Table
 async function fetchApplications() {
   try {
-    const res = await fetch(getApiUrl("/api/applications?limit=25"));
+    const res = await fetch(getApiUrl("/api/applications?limit=50"));
     if (!res.ok) return;
-    const apps = await res.json();
-    const container = document.getElementById("applicationsList");
-
-    if (!apps || apps.length === 0) {
-      container.innerHTML = `<div class="p-8 text-center text-slate-500 text-xs font-mono">// NO JOBS RECORDED YET. START CO-PILOT OR BATCH HUNT.</div>`;
-      return;
-    }
-
-    container.innerHTML = apps.map(app => {
-      let statusBadge = "bg-[#171b26] text-slate-400 border border-slate-700";
-      if (app.status.includes("SUBMITTED")) statusBadge = "bg-[#00ff88]/15 text-[#00ff88] border-2 border-[#00ff88]";
-      if (app.status.includes("PENDING")) statusBadge = "bg-amber-400/15 text-amber-300 border-2 border-amber-400";
-
-      return `
-        <div class="p-3 bg-[#0d1017] hover:bg-[#121622] transition-colors border-2 border-[#1c2233] mb-2 flex items-center justify-between gap-4 font-mono">
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2">
-              <span class="font-bold text-xs text-white truncate">[${escapeHtml(app.platform.toUpperCase())}] ${escapeHtml(app.job_title)}</span>
-            </div>
-            <div class="text-[11px] text-slate-400 truncate mt-1">
-              🏢 ${escapeHtml(app.company_name)} &bull; <span class="text-slate-500">${app.created_at ? app.created_at.slice(0, 16) : ''}</span>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-[10px] font-bold px-2.5 py-1 ${statusBadge}">[${escapeHtml(app.status)}]</span>
-            ${app.job_url ? `<a href="${app.job_url}" target="_blank" class="p-1 bg-[#171b26] text-slate-400 hover:text-white border border-[#2a3044]"><i data-lucide="external-link" class="w-3.5 h-3.5"></i></a>` : ''}
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    lucide.createIcons();
+    allApplications = await res.json();
+    renderApplicationsTable();
   } catch (err) {
     console.warn("Error fetching applications:", err);
   }
+}
+
+function setStatusFilter(status) {
+  currentStatusFilter = status;
+  ['filterAll', 'filterPending', 'filterSubmitted'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.classList.remove("bg-slate-800", "text-white", "font-medium");
+    btn.classList.add("text-slate-400");
+  });
+
+  if (status === 'ALL') {
+    document.getElementById('filterAll').classList.add("bg-slate-800", "text-white", "font-medium");
+  } else if (status === 'PENDING') {
+    document.getElementById('filterPending').classList.add("bg-slate-800", "text-white", "font-medium");
+  } else if (status === 'SUBMITTED') {
+    document.getElementById('filterSubmitted').classList.add("bg-slate-800", "text-white", "font-medium");
+  }
+
+  renderApplicationsTable();
+}
+
+function filterApplications() {
+  renderApplicationsTable();
+}
+
+function renderApplicationsTable() {
+  const container = document.getElementById("applicationsTableBody");
+  if (!container) return;
+
+  const searchKeyword = (document.getElementById("trackerSearch")?.value || "").toLowerCase().trim();
+
+  let filtered = allApplications.filter(app => {
+    // Status Filter
+    if (currentStatusFilter === "PENDING" && !app.status.includes("PENDING")) return false;
+    if (currentStatusFilter === "SUBMITTED" && !app.status.includes("SUBMITTED")) return false;
+
+    // Search Keyword Filter
+    if (searchKeyword) {
+      const titleMatch = (app.job_title || "").toLowerCase().includes(searchKeyword);
+      const companyMatch = (app.company_name || "").toLowerCase().includes(searchKeyword);
+      const platformMatch = (app.platform || "").toLowerCase().includes(searchKeyword);
+      if (!titleMatch && !companyMatch && !platformMatch) return false;
+    }
+
+    return true;
+  });
+
+  if (!filtered || filtered.length === 0) {
+    container.innerHTML = `
+      <tr>
+        <td colspan="5" class="py-12 text-center text-slate-500 text-xs">
+          No matching applications found.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map(app => {
+    let statusPill = "bg-slate-800/80 text-slate-400 border border-slate-700";
+    let statusLabel = app.status;
+
+    if (app.status.includes("SUBMITTED")) {
+      statusPill = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+      statusLabel = "Submitted";
+    } else if (app.status.includes("PENDING")) {
+      statusPill = "bg-amber-500/10 text-amber-400 border border-amber-500/20";
+      statusLabel = "Needs Review";
+    }
+
+    const companyInitial = (app.company_name || "C").charAt(0).toUpperCase();
+    const formattedDate = app.created_at ? app.created_at.replace("T", " ").slice(0, 16) : "Just now";
+
+    return `
+      <tr class="hover:bg-white/[0.02] transition-colors">
+        <td class="py-3 px-4">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-slate-800 border border-white/5 flex items-center justify-center font-semibold text-slate-300 text-xs flex-shrink-0">
+              ${companyInitial}
+            </div>
+            <div class="min-w-0">
+              <div class="font-medium text-white truncate max-w-xs sm:max-w-md">${escapeHtml(app.job_title)}</div>
+              <div class="text-xs text-slate-400 truncate">${escapeHtml(app.company_name)}</div>
+            </div>
+          </div>
+        </td>
+        <td class="py-3 px-4">
+          <span class="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-800 text-slate-300 border border-white/5 uppercase">
+            ${escapeHtml(app.platform)}
+          </span>
+        </td>
+        <td class="py-3 px-4">
+          <span class="px-2.5 py-1 rounded-full text-xs font-medium ${statusPill}">
+            ${escapeHtml(statusLabel)}
+          </span>
+        </td>
+        <td class="py-3 px-4 text-slate-400 text-xs font-mono">
+          ${formattedDate}
+        </td>
+        <td class="py-3 px-4 text-right">
+          ${app.job_url ? `
+            <a href="${app.job_url}" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-xs">
+              <span>View</span>
+              <i data-lucide="external-link" class="w-3 h-3"></i>
+            </a>
+          ` : '<span class="text-slate-600">—</span>'}
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  lucide.createIcons();
 }
 
 // Commands & Actions
@@ -265,7 +345,7 @@ async function handleResumeUpload(event) {
   if (!file) return;
 
   const statusEl = document.getElementById("uploadStatusText");
-  statusEl.textContent = "// EXTRACTING CANDIDATE SPECS VIA MULTIMODAL AI...";
+  statusEl.textContent = "Extracting candidate details via AI...";
 
   const formData = new FormData();
   formData.append("file", file);
@@ -285,31 +365,31 @@ async function handleResumeUpload(event) {
         const errText = await res.text();
         if (errText) errorMsg = errText;
       }
-      throw new Error(`${errorMsg}. Verify local agent is running on ${API_BASE}`);
+      throw new Error(`${errorMsg}. Please verify the local agent backend is running on ${API_BASE}`);
     }
 
     const data = await res.json();
     if (data.status === "ok") {
-      statusEl.textContent = "⚡ RESUME PARSED & SYNCED TO DISK!";
+      statusEl.textContent = "✓ Resume parsed & synced successfully!";
       fetchProfile();
       fetchStatus();
     } else {
-      statusEl.textContent = "UPLOAD FAILED.";
+      statusEl.textContent = "Upload failed.";
     }
   } catch (err) {
-    statusEl.textContent = "ERR: " + err.message;
+    statusEl.textContent = "Error: " + err.message;
   }
 }
 
-// Profile Dossier (First, Middle, Last Name Handling)
+// Profile Dossier
 function updateFullNamePreview() {
-  const fn = document.getElementById("profFirstName").value.trim();
-  const mn = document.getElementById("profMiddleName").value.trim();
-  const ln = document.getElementById("profLastName").value.trim();
+  const fn = document.getElementById("profFirstName")?.value.trim() || "";
+  const mn = document.getElementById("profMiddleName")?.value.trim() || "";
+  const ln = document.getElementById("profLastName")?.value.trim() || "";
   const badge = document.getElementById("fullNamePreviewBadge");
   if (badge) {
     const computed = [fn, mn, ln].filter(Boolean).join(" ");
-    badge.textContent = `ID: ${computed || "UNNAMED CANDIDATE"}`;
+    badge.textContent = computed || "Unnamed Candidate";
   }
 }
 
@@ -323,7 +403,6 @@ async function fetchProfile() {
     const c = currentProfile.career_details || {};
     const s = currentProfile.socials || {};
 
-    // First, Middle, Last Name handling
     document.getElementById("profFirstName").value = p.first_name || "";
     document.getElementById("profMiddleName").value = p.middle_name || "";
     document.getElementById("profLastName").value = p.last_name || "";
@@ -367,7 +446,7 @@ async function saveProfile() {
       body: JSON.stringify(currentProfile)
     });
     if (res.ok) {
-      alert("✅ Dossier specs successfully saved to disk!");
+      alert("Profile saved successfully!");
       updateFullNamePreview();
     }
   } catch (err) {
@@ -413,13 +492,13 @@ async function saveSettings() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(currentSettings)
     });
-    if (res.ok) alert("✅ Guardrail parameters updated!");
+    if (res.ok) alert("Safety settings updated successfully!");
   } catch (err) {
     alert("Save error: " + err.message);
   }
 }
 
-// Hardware Link Modal
+// Backend Modal
 function toggleBackendModal() {
   const modal = document.getElementById("backendModal");
   modal.classList.toggle("hidden");
