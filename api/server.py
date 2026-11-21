@@ -26,6 +26,11 @@ from engine.llm_router import LLMRouter
 from engine.batch_runner import BatchRunner
 from engine.resume_sync import ResumeSync
 from adapters.linkedin_adapter import LinkedInAdapter
+from adapters.naukri_adapter import NaukriAdapter
+from adapters.wellfound_adapter import WellfoundAdapter
+from adapters.indeed_adapter import IndeedAdapter
+from adapters.glassdoor_adapter import GlassdoorAdapter
+from adapters.workday_adapter import WorkdayAdapter
 from adapters.greenhouse_adapter import GreenhouseAdapter
 from adapters.lever_adapter import LeverAdapter
 from adapters.ashby_adapter import AshbyAdapter
@@ -164,6 +169,7 @@ async def upload_resume(file: UploadFile = File(...)):
 
 
 class SearchRequest(BaseModel):
+    platform: str = "all"
     query: str = "Flutter Developer"
     location: str = "Remote"
     limit: int = 20
@@ -178,7 +184,7 @@ async def start_copilot(background_tasks: BackgroundTasks):
     state.is_running = True
     state.current_mode = "copilot"
     background_tasks.add_task(run_copilot_loop)
-    await broadcast_log("🚀 Wrangler Co-Pilot started. Watching active Chrome tabs...", level="success")
+    await broadcast_log("🚀 Wrangler Co-Pilot started. Watching active Chrome tabs across LinkedIn, Naukri, Wellfound, Indeed, MNCs...", level="success")
     return {"status": "ok", "mode": "copilot"}
 
 
@@ -189,8 +195,8 @@ async def start_search(req: SearchRequest, background_tasks: BackgroundTasks):
 
     state.is_running = True
     state.current_mode = "search"
-    background_tasks.add_task(run_search_loop, req.query, req.location, req.limit, req.mode)
-    await broadcast_log(f"🚀 Batch Apply started: '{req.query}' in '{req.location}' (Limit: {req.limit})", level="success")
+    background_tasks.add_task(run_search_loop, req.platform, req.query, req.location, req.limit, req.mode)
+    await broadcast_log(f"🚀 Batch Apply started on [{req.platform.upper()}]: '{req.query}' in '{req.location}' (Limit: {req.limit})", level="success")
     return {"status": "ok", "mode": "search"}
 
 
@@ -228,6 +234,11 @@ async def run_copilot_loop():
 
     adapters = [
         LinkedInAdapter(resolver, llm_router, stealth, storage, settings),
+        NaukriAdapter(resolver, llm_router, stealth, storage, settings),
+        WellfoundAdapter(resolver, llm_router, stealth, storage, settings),
+        IndeedAdapter(resolver, llm_router, stealth, storage, settings),
+        GlassdoorAdapter(resolver, llm_router, stealth, storage, settings),
+        WorkdayAdapter(resolver, llm_router, stealth, storage, settings),
         GreenhouseAdapter(resolver, llm_router, stealth, storage, settings),
         LeverAdapter(resolver, llm_router, stealth, storage, settings),
         AshbyAdapter(resolver, llm_router, stealth, storage, settings)
@@ -279,14 +290,14 @@ async def run_copilot_loop():
         await broadcast_log("Co-Pilot disconnected cleanly.", level="info")
 
 
-async def run_search_loop(query: str, location: str, limit: int, mode: str):
+async def run_search_loop(platform: str, query: str, location: str, limit: int, mode: str):
     settings = load_settings()
     profile = load_profile()
     bridge = BrowserBridge(cdp_url=settings.get("browser", {}).get("cdp_endpoint", "http://localhost:9222"))
 
     try:
         browser, context, page = await bridge.connect()
-        await broadcast_log("Connected to Chrome for Batch Search.", level="success")
+        await broadcast_log(f"Connected to Chrome for Batch Search on {platform.upper()}.", level="success")
     except Exception as e:
         await broadcast_log(f"Failed to connect to Chrome: {e}", level="error")
         state.is_running = False
@@ -296,18 +307,31 @@ async def run_search_loop(query: str, location: str, limit: int, mode: str):
     stealth = StealthDriver()
     resolver = DeterministicResolver(profile)
     llm_router = LLMRouter(settings, profile, storage)
-    linkedin_adapter = LinkedInAdapter(resolver, llm_router, stealth, storage, settings)
-    batch_runner = BatchRunner(linkedin_adapter, storage, stealth, settings)
+
+    adapters_dict = {
+        "linkedin": LinkedInAdapter(resolver, llm_router, stealth, storage, settings),
+        "naukri": NaukriAdapter(resolver, llm_router, stealth, storage, settings),
+        "wellfound": WellfoundAdapter(resolver, llm_router, stealth, storage, settings),
+        "indeed": IndeedAdapter(resolver, llm_router, stealth, storage, settings),
+        "glassdoor": GlassdoorAdapter(resolver, llm_router, stealth, storage, settings),
+        "workday": WorkdayAdapter(resolver, llm_router, stealth, storage, settings),
+        "greenhouse": GreenhouseAdapter(resolver, llm_router, stealth, storage, settings),
+        "lever": LeverAdapter(resolver, llm_router, stealth, storage, settings),
+        "ashby": AshbyAdapter(resolver, llm_router, stealth, storage, settings)
+    }
+
+    batch_runner = BatchRunner(adapters_dict, storage, stealth, settings)
 
     try:
-        await batch_runner.run_linkedin_search(
+        await batch_runner.run_batch_search(
             page=page,
+            platform=platform,
             keywords=query,
             location=location,
             mode=mode,
             max_jobs=limit
         )
-        await broadcast_log("Batch apply run completed.", level="success")
+        await broadcast_log(f"Batch apply run completed for {platform.upper()}.", level="success")
     except asyncio.CancelledError:
         await broadcast_log("Batch run cancelled by user.", level="warning")
     except Exception as e:

@@ -241,6 +241,17 @@ function renderApplicationsTable() {
     const companyInitial = (app.company_name || "C").charAt(0).toUpperCase();
     const formattedDate = app.created_at ? app.created_at.replace("T", " ").slice(0, 16) : "Just now";
 
+    let platformBadge = "bg-slate-800 text-slate-300 border-white/5";
+    const pLow = (app.platform || "").toLowerCase();
+    if (pLow.includes("naukri")) platformBadge = "bg-sky-500/10 text-sky-400 border-sky-500/20";
+    else if (pLow.includes("wellfound")) platformBadge = "bg-purple-500/10 text-purple-400 border-purple-500/20";
+    else if (pLow.includes("indeed")) platformBadge = "bg-indigo-500/10 text-indigo-400 border-indigo-500/20";
+    else if (pLow.includes("linkedin")) platformBadge = "bg-blue-500/10 text-blue-400 border-blue-500/20";
+    else if (pLow.includes("workday")) platformBadge = "bg-amber-500/10 text-amber-400 border-amber-500/20";
+    else if (pLow.includes("greenhouse")) platformBadge = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+    else if (pLow.includes("lever")) platformBadge = "bg-teal-500/10 text-teal-400 border-teal-500/20";
+    else if (pLow.includes("ashby")) platformBadge = "bg-rose-500/10 text-rose-400 border-rose-500/20";
+
     return `
       <tr class="hover:bg-white/[0.02] transition-colors">
         <td class="py-3 px-4">
@@ -255,7 +266,7 @@ function renderApplicationsTable() {
           </div>
         </td>
         <td class="py-3 px-4">
-          <span class="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-800 text-slate-300 border border-white/5 uppercase">
+          <span class="px-2 py-0.5 rounded text-[11px] font-medium border uppercase ${platformBadge}">
             ${escapeHtml(app.platform)}
           </span>
         </td>
@@ -308,6 +319,7 @@ function closeBatchModal() {
 }
 
 async function confirmStartBatch() {
+  const platform = document.getElementById("batchPlatform")?.value || "all";
   const query = document.getElementById("batchQuery").value;
   const location = document.getElementById("batchLocation").value;
   const limit = parseInt(document.getElementById("batchLimit").value) || 20;
@@ -316,7 +328,7 @@ async function confirmStartBatch() {
     const res = await fetch(getApiUrl("/api/run/search"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, location, limit, mode: "autonomous" })
+      body: JSON.stringify({ platform, query, location, limit, mode: "autonomous" })
     });
     const data = await res.json();
     closeBatchModal();

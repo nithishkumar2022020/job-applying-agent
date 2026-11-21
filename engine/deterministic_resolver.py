@@ -103,20 +103,41 @@ class DeterministicResolver:
             if "day" in clean_label or input_type == "number":
                 return str(days), "notice_period_days"
             if days <= 15:
-                return "Immediate / 15 days", "notice_period_str"
+                return "15 days", "notice_period_str"
             return f"{days} days", "notice_period_str"
 
         # 17. Current CTC / Salary
-        if re.search(r'(current.*(ctc|salary|compensation)|current pay)', clean_label):
+        if re.search(r'(current.*(ctc|salary|compensation)|current pay|present ctc)', clean_label):
             curr_ctc = self.career.get("current_ctc_inr", 1000000)
+            if "lakh" in clean_label or "lpa" in clean_label:
+                lakhs = curr_ctc / 100000 if curr_ctc > 1000 else curr_ctc
+                return f"{lakhs:.1f}".rstrip('0').rstrip('.'), "current_ctc_lakhs"
             return str(curr_ctc), "current_ctc"
 
         # 18. Expected CTC / Salary
         if re.search(r'(expected.*(ctc|salary|compensation)|desired pay|salary expectation)', clean_label):
             exp_ctc = self.career.get("expected_ctc_inr", 1600000)
+            if exp_ctc < 100:  # e.g. entered 16 LPA as 16
+                exp_ctc = exp_ctc * 100000
+            if "lakh" in clean_label or "lpa" in clean_label:
+                lakhs = exp_ctc / 100000
+                return f"{lakhs:.1f}".rstrip('0').rstrip('.'), "expected_ctc_lakhs"
             return str(exp_ctc), "expected_ctc"
 
-        # 19. Total Years of Experience
+        # 19. Education Details
+        if re.search(r'\b(degree|highest qualification|qualification|education level)\b', clean_label):
+            return self.edu.get("degree", "Bachelor of Technology"), "degree"
+
+        if re.search(r'\b(field of study|major|specialization|discipline|branch)\b', clean_label):
+            return self.edu.get("field_of_study", "Computer Science & Engineering"), "field_of_study"
+
+        if re.search(r'\b(college|university|institution|school)\b', clean_label):
+            return self.edu.get("institution", "Jawaharlal Nehru Technological University"), "institution"
+
+        if re.search(r'\b(graduation year|year of passing|passing year|completion year)\b', clean_label):
+            return str(self.edu.get("graduation_year", 2023)), "graduation_year"
+
+        # 20. Total Years of Experience
         if re.search(r'(total.*(year|experience)|years of overall experience|how many years.*experience)', clean_label):
             # Check if a specific skill is named in the question
             skill_years = self.skills.get("skill_years", {})
@@ -127,13 +148,13 @@ class DeterministicResolver:
             total_exp = self.skills.get("total_years_experience", 3)
             return str(int(total_exp)), "total_experience"
 
-        # 20. Skill-Specific Experience (e.g., "Years of Flutter experience?")
+        # 21. Skill-Specific Experience (e.g., "Years of Flutter experience?")
         skill_years = self.skills.get("skill_years", {})
         for skill_name, years in skill_years.items():
             if re.search(r'\b' + re.escape(skill_name.lower()) + r'\b', clean_label):
                 return str(years), f"skill_{skill_name}_years"
 
-        # 21. Standard ATS Demographics / Equal Opportunity
+        # 22. Standard ATS Demographics / Equal Opportunity
         if re.search(r'\b(gender|sex)\b', clean_label):
             return self.demographics.get("gender", "Decline to self-identify"), "gender"
 
@@ -146,7 +167,7 @@ class DeterministicResolver:
         if re.search(r'\b(disability|handicap)\b', clean_label):
             return self.demographics.get("disability_status", "No, I do not have a disability"), "disability"
 
-        # 22. Common Binary Screening Questions
+        # 23. Common Binary Screening Questions
         if re.search(r'(18 years of age or older|at least 18)', clean_label):
             return "Yes", "age_18_plus"
 
@@ -155,6 +176,12 @@ class DeterministicResolver:
 
         if re.search(r'(willing to relocate|open to relocate)', clean_label):
             return "Yes", "relocate"
+
+        if re.search(r'(immediate joiner|can you join immediately)', clean_label):
+            return "Yes", "immediate_joiner"
+
+        if re.search(r'(serving notice period)', clean_label):
+            return "No", "serving_notice_period"
 
         if re.search(r'(background check|drug test|drug screen)', clean_label):
             return "Yes", "background_check"

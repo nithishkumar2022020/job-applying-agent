@@ -25,6 +25,11 @@ from engine.deterministic_resolver import DeterministicResolver
 from engine.llm_router import LLMRouter
 from engine.batch_runner import BatchRunner
 from adapters.linkedin_adapter import LinkedInAdapter
+from adapters.naukri_adapter import NaukriAdapter
+from adapters.wellfound_adapter import WellfoundAdapter
+from adapters.indeed_adapter import IndeedAdapter
+from adapters.glassdoor_adapter import GlassdoorAdapter
+from adapters.workday_adapter import WorkdayAdapter
 from adapters.greenhouse_adapter import GreenhouseAdapter
 from adapters.lever_adapter import LeverAdapter
 from adapters.ashby_adapter import AshbyAdapter
@@ -61,13 +66,18 @@ async def cmd_copilot(settings: dict, profile: dict, storage: ApplicationStore):
 
     adapters = [
         LinkedInAdapter(resolver, llm_router, stealth, storage, settings),
+        NaukriAdapter(resolver, llm_router, stealth, storage, settings),
+        WellfoundAdapter(resolver, llm_router, stealth, storage, settings),
+        IndeedAdapter(resolver, llm_router, stealth, storage, settings),
+        GlassdoorAdapter(resolver, llm_router, stealth, storage, settings),
+        WorkdayAdapter(resolver, llm_router, stealth, storage, settings),
         GreenhouseAdapter(resolver, llm_router, stealth, storage, settings),
         LeverAdapter(resolver, llm_router, stealth, storage, settings),
         AshbyAdapter(resolver, llm_router, stealth, storage, settings)
     ]
 
     print("👀 Wrangler Co-Pilot is ACTIVE and watching your active Chrome tab.")
-    print("   👉 Open any LinkedIn Easy Apply, Greenhouse, Lever, or Ashby job in Chrome.")
+    print("   👉 Open any job on LinkedIn, Naukri, Wellfound, Indeed, Glassdoor, Workday, Greenhouse, Lever, or Ashby.")
     print("   Press Ctrl+C to stop.\n")
 
     last_processed_url = ""
@@ -137,18 +147,31 @@ async def cmd_search(args, settings: dict, profile: dict, storage: ApplicationSt
     stealth = StealthDriver()
     resolver = DeterministicResolver(profile)
     llm_router = LLMRouter(settings, profile, storage)
-    linkedin_adapter = LinkedInAdapter(resolver, llm_router, stealth, storage, settings)
 
-    batch_runner = BatchRunner(linkedin_adapter, storage, stealth, settings)
+    adapters_dict = {
+        "linkedin": LinkedInAdapter(resolver, llm_router, stealth, storage, settings),
+        "naukri": NaukriAdapter(resolver, llm_router, stealth, storage, settings),
+        "wellfound": WellfoundAdapter(resolver, llm_router, stealth, storage, settings),
+        "indeed": IndeedAdapter(resolver, llm_router, stealth, storage, settings),
+        "glassdoor": GlassdoorAdapter(resolver, llm_router, stealth, storage, settings),
+        "workday": WorkdayAdapter(resolver, llm_router, stealth, storage, settings),
+        "greenhouse": GreenhouseAdapter(resolver, llm_router, stealth, storage, settings),
+        "lever": LeverAdapter(resolver, llm_router, stealth, storage, settings),
+        "ashby": AshbyAdapter(resolver, llm_router, stealth, storage, settings)
+    }
+
+    batch_runner = BatchRunner(adapters_dict, storage, stealth, settings)
 
     keywords = args.query or "Flutter Developer"
     location = args.location or "Remote"
     limit = args.limit or 20
     mode = args.mode or "autonomous"
+    platform = getattr(args, "platform", "all")
 
     try:
-        await batch_runner.run_linkedin_search(
+        await batch_runner.run_batch_search(
             page=page,
+            platform=platform,
             keywords=keywords,
             location=location,
             mode=mode,
@@ -224,6 +247,7 @@ def main():
 
     # search command
     search_p = subparsers.add_parser("search", help="Run autonomous overnight batch job search & apply")
+    search_p.add_argument("--platform", type=str, choices=["all", "linkedin", "naukri", "indeed", "wellfound"], default="all", help="Target job platform (default: all)")
     search_p.add_argument("--query", type=str, default="Flutter Developer", help="Target job title or keywords")
     search_p.add_argument("--location", type=str, default="Remote", help="Target location (e.g. Remote, Hyderabad)")
     search_p.add_argument("--limit", type=int, default=20, help="Max jobs to process")
