@@ -44,7 +44,7 @@ class LeverAdapter(BaseAdapter):
                     "company_name": company_name,
                     "job_url": job_url,
                     "platform": "lever",
-                    "message": "Lever application autofilled! Ready for 1-click review & submit."
+                    "message": "Wrangler: Lever application autofilled! Ready for 1-click review & submit."
                 }
             else:
                 await self.stealth.human_click(page, submit_btn)

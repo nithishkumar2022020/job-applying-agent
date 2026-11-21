@@ -66,7 +66,7 @@ async def cmd_copilot(settings: dict, profile: dict, storage: ApplicationStore):
         AshbyAdapter(resolver, llm_router, stealth, storage, settings)
     ]
 
-    print("👀 LandOffer Co-Pilot is ACTIVE and watching your active Chrome tab.")
+    print("👀 Wrangler Co-Pilot is ACTIVE and watching your active Chrome tab.")
     print("   👉 Open any LinkedIn Easy Apply, Greenhouse, Lever, or Ashby job in Chrome.")
     print("   Press Ctrl+C to stop.\n")
 
@@ -261,7 +261,7 @@ def main():
         import uvicorn
         import webbrowser
         url = f"http://{args.host}:{args.port}"
-        print(f"\n🌐 Launching LandOffer Web Studio Dashboard on {url}...")
+        print(f"\n🌐 Launching Wrangler Web Studio Dashboard on {url}...")
         if not args.no_browser:
             webbrowser.open(url)
         uvicorn.run("api.server:app", host=args.host, port=args.port, reload=False)

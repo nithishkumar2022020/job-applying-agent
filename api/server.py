@@ -178,7 +178,7 @@ async def start_copilot(background_tasks: BackgroundTasks):
     state.is_running = True
     state.current_mode = "copilot"
     background_tasks.add_task(run_copilot_loop)
-    await broadcast_log("🚀 LandOffer Co-Pilot started. Watching active Chrome tabs...", level="success")
+    await broadcast_log("🚀 Wrangler Co-Pilot started. Watching active Chrome tabs...", level="success")
     return {"status": "ok", "mode": "copilot"}
 
 

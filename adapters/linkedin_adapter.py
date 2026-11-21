@@ -68,7 +68,7 @@ class LinkedInAdapter(BaseAdapter):
             # Are we on the final review / submit step?
             if await submit_btn.is_visible():
                 if mode == "copilot":
-                    # LandOffer Style: Highlight and pause for user 1-click confirmation
+                    # Wrangler Co-Pilot: Highlight and pause for user 1-click confirmation
                     await self._highlight_element(page, submit_btn)
                     return {
                         "status": "AUTOFILLED_PENDING_REVIEW",
@@ -76,7 +76,7 @@ class LinkedInAdapter(BaseAdapter):
                         "company_name": company_name,
                         "job_url": job_url,
                         "step": step,
-                        "message": "Application autofilled! Ready for your 1-click review & submit."
+                        "message": "Wrangler: Application autofilled! Ready for 1-click review & submit."
                     }
                 else:
                     # Autonomous Mode: Click submit

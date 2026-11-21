@@ -1,8 +1,8 @@
 personal:
-  first_name: Nithish
-  middle_name: Kumar
-  last_name: Reddy
-  full_name: Reddyvari Nithish Kumar Reddy
+  first_name: Nithish kumar Reddy
+  middle_name: ''
+  last_name: Reddyvari
+  full_name: Nithish kumar Reddy Reddyvari
   email: reddynithish15@gmail.com
   phone: +91 9989928002
   phone_country_code: '+91'
@@ -13,7 +13,7 @@ personal:
   address_line1: Madhapur, Hitech City
 socials:
   linkedin: https://www.linkedin.com/in/reddyvari-nithish-kumar-reddy/
-  github: https://github.com/nithishkumar
+  github: https://github.com/nithishkumar2022020
   portfolio: https://nithishkumar.dev
   twitter: https://x.com/nithishkumar
 work_authorization:
@@ -37,7 +37,7 @@ career_details:
   - Bengaluru
   current_notice_period_days: 15
   current_ctc_inr: 1000000
-  expected_ctc_inr: 1600000
+  expected_ctc_inr: 5
   currency: INR
 skills_and_experience:
   total_years_experience: 3

@@ -45,7 +45,7 @@ class GreenhouseAdapter(BaseAdapter):
                     "company_name": company_name,
                     "job_url": job_url,
                     "platform": "greenhouse",
-                    "message": "Greenhouse application autofilled! Ready for 1-click review & submit."
+                    "message": "Wrangler: Greenhouse application autofilled! Ready for 1-click review & submit."
                 }
             else:
                 await self.stealth.human_click(page, submit_btn)
