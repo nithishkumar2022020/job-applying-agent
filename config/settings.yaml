@@ -1,0 +1,56 @@
+app:
+  name: "Stealth Job Applying Agent"
+  version: "1.0.0"
+  # Modes: 'copilot' (LandOffer 1-Click Autofill & Review) or 'autonomous' (Overnight Auto-Submit)
+  mode: "copilot"
+
+browser:
+  cdp_endpoint: "http://localhost:9222"
+  connect_timeout_ms: 10000
+  slow_mo_ms: 50
+  user_agent_override: null  # null inherits your genuine Chrome UA
+
+stealth:
+  typing:
+    min_keystroke_delay_ms: 45
+    max_keystroke_delay_ms: 130
+    punctuation_pause_ms: 220
+  mouse:
+    move_steps: 10
+    random_hover_before_click: true
+  action_delay:
+    min_page_wait_sec: 2.0
+    max_page_wait_sec: 4.5
+
+ai:
+  # High-availability dual-provider routing
+  primary_provider: "gemini"
+  secondary_provider: "groq"
+  enable_cache: true
+  cache_db_path: "data/cache_qa.db"
+  gemini:
+    model: "gemini-2.0-flash"
+    api_key_env: "GEMINI_API_KEY"
+  groq:
+    model: "llama-3.3-70b-versatile"
+    api_key_env: "GROQ_API_KEY"
+
+limits:
+  max_daily_applications: 35
+  max_hourly_applications: 10
+  pause_between_applications_min_sec: 14
+  pause_between_applications_max_sec: 32
+
+resume:
+  path: "resumes/resume.pdf"
+
+filters:
+  blacklist_companies:
+    - "Revature"
+    - "Staffing Inc"
+    - "CyberCoders"
+  blacklist_title_keywords:
+    - "Unpaid"
+    - "Internship"
+    - "Principal Architect"
+    - "Director"

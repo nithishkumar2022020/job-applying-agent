@@ -1,0 +1,76 @@
+personal:
+  first_name: "Nithish"
+  last_name: "Kumar"
+  full_name: "Nithish Kumar"
+  email: "nithish.dev@example.com"
+  phone: "+91 9876543210"
+  phone_country_code: "+91"
+  city: "Hyderabad"
+  state: "Telangana"
+  country: "India"
+  postal_code: "500081"
+  address_line1: "Madhapur, Hitech City"
+
+socials:
+  linkedin: "https://linkedin.com/in/nithishkumar"
+  github: "https://github.com/nithishkumar"
+  portfolio: "https://nithishkumar.dev"
+  twitter: "https://x.com/nithishkumar"
+
+work_authorization:
+  authorized_to_work: true
+  requires_sponsorship_now: false
+  requires_sponsorship_future: false
+  current_citizenship: "Indian"
+  work_visa_status: "Citizen"
+
+career_details:
+  target_roles:
+    - "Flutter Developer"
+    - "Mobile Application Engineer"
+    - "Senior Flutter Engineer"
+    - "Frontend Developer"
+  preferred_work_types:
+    - "Remote"
+    - "Hybrid"
+  preferred_locations:
+    - "Remote"
+    - "Hyderabad"
+    - "Bengaluru"
+  current_notice_period_days: 15
+  current_ctc_inr: 1000000
+  expected_ctc_inr: 1600000
+  currency: "INR"
+
+skills_and_experience:
+  total_years_experience: 3.0
+  skill_years:
+    Flutter: 3
+    Dart: 3
+    Firebase: 3
+    State Management: 3
+    BLoC: 3
+    Riverpod: 2
+    REST APIs: 3
+    GraphQL: 2
+    Git: 3
+    CI/CD: 2
+    Python: 2
+
+education:
+  degree: "Bachelor of Technology"
+  field_of_study: "Computer Science & Engineering"
+  institution: "Jawaharlal Nehru Technological University"
+  graduation_year: 2023
+  gpa: "8.4"
+
+demographics:
+  gender: "Decline to self-identify"
+  ethnicity: "Asian (Indian)"
+  veteran_status: "I am not a protected veteran"
+  disability_status: "No, I do not have a disability"
+
+heuristics:
+  summary: "Results-driven Mobile Engineer specializing in Flutter and Dart, building production apps with scalable state architecture, smooth 60fps animations, and clean offline-first networking."
+  why_join: "I am passionate about building intuitive, customer-facing applications that scale to millions of users. My background in Flutter performance optimization and reactive architecture directly aligns with your team's mission."
+  proudest_project: "Engineered Synqra, a low-latency client architecture with streaming token support, offline-first vector storage, and comprehensive automated test suites."
